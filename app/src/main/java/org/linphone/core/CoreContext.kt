@@ -52,6 +52,7 @@ import org.linphone.compatibility.Compatibility
 import org.linphone.contacts.ContactsManager
 import org.linphone.core.tools.Log
 import org.linphone.notifications.NotificationsManager
+import org.linphone.ott.OttCardDavProvisioning
 import org.linphone.telecom.TelecomManager
 import org.linphone.ui.call.CallActivity
 import org.linphone.utils.ActivityMonitor
@@ -302,6 +303,8 @@ class CoreContext
                     }
                 }
 
+                Log.i("$TAG Remote provisioning applied, starting OTT CardDAV provisioning")
+                OttCardDavProvisioning.apply(core)
                 provisioningAppliedEvent.postValue(Event(true))
                 corePreferences.firstLaunch = false
                 showGreenToastEvent.postValue(
