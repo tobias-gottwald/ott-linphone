@@ -373,7 +373,7 @@ class CorePreferences
 
     @get:AnyThread @set:WorkerThread
     var pushNotificationCompatibleDomains: Array<String>
-        get() = config.getStringList("app", "push_notification_domains", arrayOf("sip.linphone.org"))
+        get() = config.getStringList("app", "push_notification_domains", arrayOf("sip-internal.otthoeren.de"))
         set(value) {
             config.setStringList("app", "push_notification_domains", value)
         }

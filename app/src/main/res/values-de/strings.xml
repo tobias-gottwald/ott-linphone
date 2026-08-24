@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE resources [
-<!ENTITY appName "Linphone">
+<!ENTITY appName "OTThören">
 ]>
 <resources>
     <string name="sip_address">SIP-Adresse</string>
@@ -316,6 +316,10 @@
     <string name="contacts_list_filter_popup_see_all">Alle anzeigen</string>
     <string name="contacts_list_filter_popup_see_linphone_only">&appName; Kontakte</string>
     <string name="contacts_list_filter_popup_see_sip_only">SIP Kontakte</string>
+    <!-- OTThören contact tiers, keep in sync with values -->
+    <string name="contact_tier_intern">Intern</string>
+    <string name="contact_tier_extern">Extern</string>
+    <string name="contact_tier_all">Alle</string>
     <string name="contact_new_title">Neuer Kontakt</string>
     <string name="contact_edit_title">Kontakt bearbeiten</string>
     <string name="contact_editor_first_name">Vorname</string>

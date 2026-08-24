@@ -1,3 +1,13 @@
+# OTThören
+
+OTThören is an OTT-specific fork of [linphone-android](https://gitlab.linphone.org/BC/public/linphone-android) 6.2.6, maintained on the `ott/master` branch.
+
+- **Build**: JDK 21 and an Android SDK with compileSdk 37 are required. The Linphone SDK version is pinned in `gradle/libs.versions.toml` and resolved from `download.linphone.org`.
+- **Firebase**: `app/google-services.json` is committed (Firebase project `ott-linphone`, used for FCM push notifications).
+- **Release signing**: uses our own keystore stored OUTSIDE the repo; its path and passwords are configured in `keystore.properties` (the committed file only keeps upstream placeholders so CI/debug builds work).
+- **Upstream rebases**: `git fetch upstream --tags && git rebase <tag>` on `ott/master`.
+
+---
 
 [![pipeline status](https://gitlab.linphone.org/BC/public/linphone-android/badges/master/pipeline.svg)](https://gitlab.linphone.org/BC/public/linphone-android/commits/master) 
 [![weblate status](https://weblate.linphone.org/widget/linphone/linphone-android-6-0/status-badge.png)](https://weblate.linphone.org/engage/linphone/)

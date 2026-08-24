@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 
 <!DOCTYPE resources [
-    <!ENTITY appName "Linphone">
+    <!ENTITY appName "OTThören">
 ]>
 
 <resources>
@@ -491,6 +491,10 @@
     <string name="contacts_list_filter_popup_see_all">See all</string>
     <string name="contacts_list_filter_popup_see_linphone_only">See &appName; contacts</string>
     <string name="contacts_list_filter_popup_see_sip_only">See SIP contacts</string>
+    <!-- OTThören contact tiers, keep in sync with values-de -->
+    <string name="contact_tier_intern">Intern</string>
+    <string name="contact_tier_extern">Extern</string>
+    <string name="contact_tier_all">All</string>
     <string name="contacts_list_search_results_limit_reached_label">Search results limit reached, refine your search.</string>
 
     <string name="contact_new_title">New contact</string>
