@@ -49,9 +49,10 @@ import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
 import org.linphone.ui.main.contacts.model.NumberOrAddressPickerDialogModel
 import org.linphone.ui.main.history.viewmodel.StartCallViewModel
+import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
-import org.linphone.utils.ConfirmationDialogModel
 import org.linphone.utils.AppUtils
+import org.linphone.utils.ConfirmationDialogModel
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.RecyclerViewHeaderDecoration
@@ -120,6 +121,9 @@ class TransferCallFragment : GenericCallFragment() {
         savedInstanceState: Bundle?
     ): View {
         binding = CallTransferFragmentBinding.inflate(layoutInflater)
+        // View model is shared with NewCallFragment through the call nav graph,
+        // so make sure its default tier is applied every time this fragment is entered
+        viewModel.updateContactTier(ContactTier.INTERN)
         return binding.root
     }
 
@@ -148,6 +152,17 @@ class TransferCallFragment : GenericCallFragment() {
 
         binding.setHideNumpadClickListener {
             viewModel.hideNumpad()
+        }
+
+        viewModel.contactTier.observe(viewLifecycleOwner) { tier ->
+            val buttonId = when (tier) {
+                ContactTier.ALL -> R.id.contact_tier_all_button
+                ContactTier.INTERN -> R.id.contact_tier_intern_button
+                ContactTier.EXTERN -> R.id.contact_tier_extern_button
+            }
+            if (binding.contactTierGroup.checkedButtonId != buttonId) {
+                binding.contactTierGroup.check(buttonId)
+            }
         }
 
         binding.callsList.setHasFixedSize(true)

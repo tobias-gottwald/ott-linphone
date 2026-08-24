@@ -40,6 +40,7 @@ import org.linphone.core.MagicSearchListenerStub
 import org.linphone.core.SearchResult
 import org.linphone.core.tools.Log
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
+import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.viewmodel.AbstractMainViewModel
 import org.linphone.utils.Event
 import org.linphone.utils.FileUtils
@@ -54,6 +55,8 @@ class ContactsListViewModel
     val contactsList = MutableLiveData<ArrayList<ContactAvatarModel>>()
 
     val favouritesList = MutableLiveData<ArrayList<ContactAvatarModel>>()
+
+    val contactTier = MutableLiveData<ContactTier>()
 
     val fetchInProgress = MutableLiveData<Boolean>()
 
@@ -150,6 +153,7 @@ class ContactsListViewModel
 
     init {
         fetchInProgress.value = true
+        contactTier.value = ContactTier.ALL
         showFavourites.value = corePreferences.showFavoriteContacts
         showFilter.value = !corePreferences.hidePhoneNumbers && !corePreferences.hideSipAddresses
         disableAddContact.value = corePreferences.disableAddContact
@@ -230,6 +234,18 @@ class ContactsListViewModel
         
         coreContext.postOnCoreThread {
             corePreferences.showFavoriteContacts = show
+        }
+    }
+
+    @UiThread
+    fun updateContactTier(tier: ContactTier) {
+        if (contactTier.value == tier) return
+
+        Log.i("$TAG Contact tier filter changed to [$tier], re-applying current filter")
+        contactTier.value = tier
+
+        coreContext.postOnCoreThread {
+            applyFilter(currentFilter, domainFilter, filterChanged = true)
         }
     }
 
@@ -344,13 +360,19 @@ class ContactsListViewModel
     @WorkerThread
     private fun processMagicSearchResults(results: Array<SearchResult>, favourites: Boolean) {
         // Do not call destroy() on previous list items as they are cached and will be re-used
-        Log.i("$TAG Processing [${results.size}] results, favourites is [$favourites]")
+        val tier = contactTier.value ?: ContactTier.ALL
+        val filteredResults: List<SearchResult> = if (tier == ContactTier.ALL) {
+            results.toList()
+        } else {
+            results.filter { tier.matches(it) }
+        }
+        Log.i("$TAG Processing [${results.size}] results, favourites is [$favourites], [${filteredResults.size}] of them matching tier [$tier]")
 
         val list = arrayListOf<ContactAvatarModel>()
         val collator = Collator.getInstance(Locale.getDefault())
         val hideEmptyContacts = corePreferences.hideContactsWithoutPhoneNumberOrSipAddress
 
-        for (result in results) {
+        for (result in filteredResults) {
             val friend = result.friend
             if (friend != null) {
                 if (hideEmptyContacts && friend.addresses.isEmpty() && friend.phoneNumbers.isEmpty()) {
@@ -395,7 +417,7 @@ class ContactsListViewModel
             firstLoad = false
         }
 
-        Log.i("$TAG Processed [${results.size}] results into [${list.size} contacts]")
+        Log.i("$TAG Processed [${filteredResults.size}] results into [${list.size} contacts]")
     }
 
     @WorkerThread

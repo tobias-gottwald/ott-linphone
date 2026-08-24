@@ -39,6 +39,7 @@ import org.linphone.mediastream.Log
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
+import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
 import org.linphone.ui.main.model.SelectedAddressModel
 import org.linphone.utils.AppUtils
@@ -61,7 +62,7 @@ abstract class AddressSelectionViewModel
     val selectionCount = MutableLiveData<String>()
 
     val searchFilter = MutableLiveData<String>()
-
+    val contactTier = MutableLiveData<ContactTier>()
     val searchInProgress = MutableLiveData<Boolean>()
 
     val modelsList = MutableLiveData<ArrayList<ConversationContactOrSuggestionModel>>()
@@ -148,8 +149,7 @@ abstract class AddressSelectionViewModel
 
     init {
         multipleSelectionMode.value = false
-        isEmpty.value = true
-
+        contactTier.value = ContactTier.ALL
         coreContext.postOnCoreThread { core ->
             coreContext.contactsManager.addListener(contactsListener)
             magicSearch = core.createMagicSearch()
@@ -178,6 +178,16 @@ abstract class AddressSelectionViewModel
         if (searchFilter.value.orEmpty().isNotEmpty()) {
             searchFilter.value = ""
         }
+    }
+
+    @UiThread
+    fun updateContactTier(tier: ContactTier) {
+        if (contactTier.value == tier) return
+
+        Log.i("$TAG Contact tier filter changed to [$tier], re-applying current filter")
+        contactTier.value = tier
+
+        applyFilter(currentFilter)
     }
 
     @UiThread
@@ -308,7 +318,13 @@ abstract class AddressSelectionViewModel
 
     @WorkerThread
     private fun processMagicSearchResults(results: Array<SearchResult>) {
-        Log.i("$TAG Processing [${results.size}] results")
+        val tier = contactTier.value ?: ContactTier.ALL
+        val filteredResults: List<SearchResult> = if (tier == ContactTier.ALL) {
+            results.toList()
+        } else {
+            results.filter { tier.matches(it) }
+        }
+        Log.i("$TAG Processing [${results.size}] results, [${filteredResults.size}] of them matching tier [$tier]")
 
         val conversationsList = if (!skipConversation) {
             getConversationsList(currentFilter)
@@ -321,7 +337,9 @@ abstract class AddressSelectionViewModel
         val domain = corePreferences.contactsFilter
         // Make a quick synchronous search for favorites (in case of total results exceed magic search limit to prevent missing ones)
         // TODO FIXME: to improve like it's done in ContactsListViewModel but will require UI changes
-        val favorites = favouritesMagicSearch.getContactsList(currentFilter, domain, MagicSearch.Source.FavoriteFriends.toInt(), MagicSearch.Aggregation.Friend)
+        val favorites = favouritesMagicSearch.getContactsList(currentFilter, domain, MagicSearch.Source.FavoriteFriends.toInt(), MagicSearch.Aggregation.Friend).filter {
+            tier.matches(it)
+        }
         for (result in favorites) {
             val address = result.address
             val friend = result.friend ?: continue
@@ -346,7 +364,7 @@ abstract class AddressSelectionViewModel
         val suggestionsList = arrayListOf<ConversationContactOrSuggestionModel>()
         val requestList = arrayListOf<ConversationContactOrSuggestionModel>()
 
-        for (result in results) {
+        for (result in filteredResults) {
             val address = result.address
             val friend = result.friend
             if (friend != null) {
@@ -415,7 +433,7 @@ abstract class AddressSelectionViewModel
         modelsList.postValue(list)
         isEmpty.postValue(list.isEmpty())
         Log.i(
-            "$TAG Processed [${results.size}] results: [${conversationsList.size}] conversations, [${favoritesList.size}] favorites, [${contactsList.size}] contacts and [${suggestionsList.size}] suggestions"
+            "$TAG Processed [${filteredResults.size}] results: [${conversationsList.size}] conversations, [${favoritesList.size}] favorites, [${contactsList.size}] contacts and [${suggestionsList.size}] suggestions"
         )
     }
 

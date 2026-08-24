@@ -57,6 +57,7 @@ import org.linphone.ui.main.contacts.adapter.ContactsListAdapter
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
 import org.linphone.ui.main.contacts.viewmodel.ContactsListViewModel
 import org.linphone.ui.main.fragment.AbstractMainFragment
+import org.linphone.ui.main.model.ContactTier
 import org.linphone.utils.ConfirmationDialogModel
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
@@ -128,10 +129,20 @@ class ContactsListFragment : AbstractMainFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         listViewModel = ViewModelProvider(this)[ContactsListViewModel::class.java]
-
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = listViewModel
         observeToastEvents(listViewModel)
+
+        listViewModel.contactTier.observe(viewLifecycleOwner) { tier ->
+            val buttonId = when (tier) {
+                ContactTier.ALL -> R.id.contact_tier_all_button
+                ContactTier.INTERN -> R.id.contact_tier_intern_button
+                ContactTier.EXTERN -> R.id.contact_tier_extern_button
+            }
+            if (binding.contactTierGroup.checkedButtonId != buttonId) {
+                binding.contactTierGroup.check(buttonId)
+            }
+        }
 
         // Disabled by default, may be enabled in onResume()
         binding.contactsListSwipeRefresh.isEnabled = false

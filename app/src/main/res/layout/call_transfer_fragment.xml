@@ -5,6 +5,7 @@
 
     <data>
         <import type="android.view.View" />
+        <import type="org.linphone.ui.main.model.ContactTier" />
         <variable
             name="backClickListener"
             type="View.OnClickListener" />
@@ -189,6 +190,70 @@
                         app:layout_constraintTop_toBottomOf="@id/search_bar"
                         app:layout_constraintStart_toStartOf="@id/search_bar"
                         app:layout_constraintEnd_toEndOf="@id/search_bar"/>
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/contact_tier_group"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        app:checkedButton="@+id/contact_tier_all_button"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/results_limit_reached">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contact_tier_intern_button"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:onClick="@{() -> viewModel.updateContactTier(ContactTier.INTERN)}"
+                            android:text="@string/contact_tier_intern"
+                            android:textSize="12sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contact_tier_extern_button"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:onClick="@{() -> viewModel.updateContactTier(ContactTier.EXTERN)}"
+                            android:text="@string/contact_tier_extern"
+                            android:textSize="12sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contact_tier_all_button"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:onClick="@{() -> viewModel.updateContactTier(ContactTier.ALL)}"
+                            android:text="@string/contact_tier_all"
+                            android:textSize="12sp" />
+
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <ImageView
                         android:id="@+id/no_contacts_nor_suggestion_image"
@@ -202,8 +267,7 @@
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintHeight_max="200dp"
                         app:layout_constraintVertical_bias="0.3"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/search_bar"
+                        app:layout_constraintTop_toBottomOf="@id/contact_tier_group"
                         app:layout_constraintBottom_toBottomOf="parent" />
 
                     <androidx.appcompat.widget.AppCompatTextView
@@ -226,7 +290,7 @@
                         android:visibility="@{viewModel.isEmpty ? View.GONE : View.VISIBLE}"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/results_limit_reached"
+                        app:layout_constraintTop_toBottomOf="@id/contact_tier_group"
                         app:layout_constraintBottom_toBottomOf="parent" />
 
                     <com.google.android.material.progressindicator.CircularProgressIndicator
