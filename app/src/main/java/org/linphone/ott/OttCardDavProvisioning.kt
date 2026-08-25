@@ -20,6 +20,7 @@
 package org.linphone.ott
 
 import androidx.annotation.WorkerThread
+import org.linphone.core.Config
 import org.linphone.core.Core
 import org.linphone.core.Factory
 import org.linphone.core.FriendList
@@ -30,9 +31,15 @@ import org.linphone.core.tools.Log
  * from the [ott] section of the (remote) provisioning configuration.
  *
  * Idempotent: friend lists are matched by exact CardDAV URI, an already existing
- * list is only re-synchronized, never re-created, and no other friend list is
- * ever touched. Does nothing (except logging) when the configuration section or
- * both URLs are missing/empty, leaving the stock behaviour unchanged.
+ * list is only re-synchronized (its display name is always reset to the canonical
+ * tier name), never re-created. CardDAV credentials (realm/username) are rotated
+ * on every apply so a password change in the provisioning takes effect. The set
+ * of provisioned URIs is persisted in the [ott_managed] configuration section
+ * (key [OttCardDavProvisioning.CONFIG_FRIEND_LIST_URIS_KEY]) and friend lists
+ * recorded there but no longer configured are removed - lists not provisioned by
+ * this app are never touched. Does nothing (except logging) when the
+ * configuration section or both URLs are missing/empty, leaving the stock
+ * behaviour unchanged.
  */
 object OttCardDavProvisioning {
     private const val TAG = "[OTT CardDAV Provisioning]"
@@ -43,6 +50,9 @@ object OttCardDavProvisioning {
     private const val CONFIG_USERNAME_KEY = "carddav_username"
     private const val CONFIG_PASSWORD_KEY = "carddav_password"
     private const val CONFIG_REALM_KEY = "carddav_realm"
+
+    private const val CONFIG_MANAGED_SECTION = "ott_managed"
+    private const val CONFIG_FRIEND_LIST_URIS_KEY = "friend_list_uris"
 
     private const val INTERN_LIST_NAME = "Intern"
     private const val EXTERN_LIST_NAME = "Extern"
@@ -62,40 +72,81 @@ object OttCardDavProvisioning {
         val realm = config.getString(CONFIG_SECTION, CONFIG_REALM_KEY, "").orEmpty().trim()
         if (username.isNotEmpty() && password.isNotEmpty() && realm.isNotEmpty()) {
             val foundAuthInfo = core.findAuthInfo(realm, username, null)
-            if (foundAuthInfo == null) {
-                Log.i("$TAG Adding auth info with username [$username] and realm [$realm]")
-                val authInfo = Factory.instance().createAuthInfo(
-                    username,
-                    null,
-                    password,
-                    null,
-                    realm,
-                    null
+            if (foundAuthInfo != null) {
+                Log.i(
+                    "$TAG Auth info with username [$username] and realm [$realm] already exists, replacing it to rotate its password"
                 )
-                core.addAuthInfo(authInfo)
+                core.removeAuthInfo(foundAuthInfo)
             } else {
-                Log.w(
-                    "$TAG Auth info with username [$username] and realm [$realm] already exists, keeping it"
-                )
+                Log.i("$TAG Adding auth info with username [$username] and realm [$realm]")
             }
+            val authInfo = Factory.instance().createAuthInfo(
+                username,
+                null,
+                password,
+                null,
+                realm,
+                null
+            )
+            core.addAuthInfo(authInfo)
         } else {
             Log.i(
                 "$TAG CardDAV credentials in [$CONFIG_SECTION] configuration section incomplete, skipping auth info"
             )
         }
 
+        val desiredLists = arrayListOf<Pair<String, String>>()
         if (internUrl.isNotEmpty()) {
-            upsertCardDavFriendList(core, INTERN_LIST_NAME, internUrl)
+            desiredLists.add(INTERN_LIST_NAME to internUrl)
         }
         if (externUrl.isNotEmpty()) {
-            upsertCardDavFriendList(core, EXTERN_LIST_NAME, externUrl)
+            desiredLists.add(EXTERN_LIST_NAME to externUrl)
         }
+        val desiredUris = desiredLists.map { it.second }.toSet()
+
+        val previouslyOwnedUris = readOwnedFriendListUris(config)
+        for (friendList in core.friendsLists) {
+            val uri = friendList.uri ?: continue
+            if (uri in previouslyOwnedUris && uri !in desiredUris) {
+                Log.i(
+                    "$TAG Friend list [${friendList.displayName}] with URI [$uri] was provisioned by us but is no longer in configuration, removing it"
+                )
+                core.removeFriendList(friendList)
+            }
+        }
+
+        for ((displayName, url) in desiredLists) {
+            upsertCardDavFriendList(core, displayName, url)
+        }
+
+        Log.i("$TAG Persisting [${desiredUris.size}] provisioned friend list URI(s)")
+        config.setString(
+            CONFIG_MANAGED_SECTION,
+            CONFIG_FRIEND_LIST_URIS_KEY,
+            desiredUris.joinToString(",")
+        )
+    }
+
+    @WorkerThread
+    private fun readOwnedFriendListUris(config: Config): Set<String> {
+        return config.getString(CONFIG_MANAGED_SECTION, CONFIG_FRIEND_LIST_URIS_KEY, "")
+            .orEmpty()
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
     }
 
     @WorkerThread
     private fun upsertCardDavFriendList(core: Core, displayName: String, url: String) {
         val existingFriendList = core.friendsLists.find { it.uri == url }
         if (existingFriendList != null) {
+            if (existingFriendList.displayName != displayName) {
+                Log.i(
+                    "$TAG Friend list with URI [$url] was named [${existingFriendList.displayName}], resetting its display name to [$displayName]"
+                )
+            }
+            existingFriendList.displayName = displayName
             Log.i(
                 "$TAG CardDAV friend list [$displayName] with URI [$url] already exists, synchronizing it"
             )

@@ -245,6 +245,11 @@ class ContactsListViewModel
         contactTier.value = tier
 
         coreContext.postOnCoreThread {
+            // Tiered results are filtered client-side once MagicSearch returns them,
+            // so the search itself must not be truncated by the results limit while
+            // a tier other than ALL is active
+            magicSearch.limitedSearch = tier == ContactTier.ALL
+            magicSearch.resetSearchCache()
             applyFilter(currentFilter, domainFilter, filterChanged = true)
         }
     }

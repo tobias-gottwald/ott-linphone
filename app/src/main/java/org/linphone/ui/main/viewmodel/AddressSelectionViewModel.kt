@@ -187,7 +187,14 @@ abstract class AddressSelectionViewModel
         Log.i("$TAG Contact tier filter changed to [$tier], re-applying current filter")
         contactTier.value = tier
 
-        applyFilter(currentFilter)
+        coreContext.postOnCoreThread {
+            // Tiered results are filtered client-side once MagicSearch returns them,
+            // so the search itself must not be truncated by the results limit while
+            // a tier other than ALL is active
+            magicSearch.limitedSearch = tier == ContactTier.ALL
+            magicSearch.resetSearchCache()
+            applyFilter(currentFilter, magicSearchSourceFlags)
+        }
     }
 
     @UiThread
