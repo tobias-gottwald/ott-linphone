@@ -37,9 +37,12 @@ import org.linphone.core.tools.Log
  * of provisioned URIs is persisted in the [ott_managed] configuration section
  * (key [OttCardDavProvisioning.CONFIG_FRIEND_LIST_URIS_KEY]) and friend lists
  * recorded there but no longer configured are removed - lists not provisioned by
- * this app are never touched. Does nothing (except logging) when the
- * configuration section or both URLs are missing/empty, leaving the stock
- * behaviour unchanged.
+ * this app are never touched.
+ *
+ * When the [ott] section is missing entirely the configuration is considered
+ * stock and nothing at all is touched (log only). When the section exists but
+ * both CardDAV URLs are empty, every previously provisioned friend list is
+ * removed (full deprovisioning) and no new list is created.
  */
 object OttCardDavProvisioning {
     private const val TAG = "[OTT CardDAV Provisioning]"
@@ -60,10 +63,45 @@ object OttCardDavProvisioning {
     @WorkerThread
     fun apply(core: Core) {
         val config = core.config
+        if (config.hasSection(CONFIG_SECTION) == 0) {
+            Log.i(
+                "$TAG No [$CONFIG_SECTION] configuration section at all, stock configuration, nothing to do"
+            )
+            return
+        }
+
         val internUrl = config.getString(CONFIG_SECTION, CONFIG_INTERN_URL_KEY, "").orEmpty().trim()
         val externUrl = config.getString(CONFIG_SECTION, CONFIG_EXTERN_URL_KEY, "").orEmpty().trim()
-        if (internUrl.isEmpty() && externUrl.isEmpty()) {
-            Log.i("$TAG No CardDAV URLs in [$CONFIG_SECTION] configuration section, nothing to do")
+
+        val desiredLists = arrayListOf<Pair<String, String>>()
+        if (internUrl.isNotEmpty()) {
+            desiredLists.add(INTERN_LIST_NAME to internUrl)
+        }
+        if (externUrl.isNotEmpty()) {
+            desiredLists.add(EXTERN_LIST_NAME to externUrl)
+        }
+        val desiredUris = desiredLists.map { it.second }.toSet()
+
+        val previouslyOwnedUris = readOwnedFriendListUris(config)
+        for (friendList in core.friendsLists) {
+            val uri = friendList.uri ?: continue
+            if (uri in previouslyOwnedUris && uri !in desiredUris) {
+                Log.i(
+                    "$TAG Friend list [${friendList.displayName}] with URI [$uri] was provisioned by us but is no longer in configuration, removing it"
+                )
+                core.removeFriendList(friendList)
+            }
+        }
+
+        if (desiredLists.isEmpty()) {
+            Log.i(
+                "$TAG No CardDAV URL left in [$CONFIG_SECTION] configuration section, all provisioned friend lists have been removed and none will be created"
+            )
+            config.setStringList(
+                CONFIG_MANAGED_SECTION,
+                CONFIG_FRIEND_LIST_URIS_KEY,
+                arrayOf()
+            )
             return
         }
 
@@ -95,45 +133,21 @@ object OttCardDavProvisioning {
             )
         }
 
-        val desiredLists = arrayListOf<Pair<String, String>>()
-        if (internUrl.isNotEmpty()) {
-            desiredLists.add(INTERN_LIST_NAME to internUrl)
-        }
-        if (externUrl.isNotEmpty()) {
-            desiredLists.add(EXTERN_LIST_NAME to externUrl)
-        }
-        val desiredUris = desiredLists.map { it.second }.toSet()
-
-        val previouslyOwnedUris = readOwnedFriendListUris(config)
-        for (friendList in core.friendsLists) {
-            val uri = friendList.uri ?: continue
-            if (uri in previouslyOwnedUris && uri !in desiredUris) {
-                Log.i(
-                    "$TAG Friend list [${friendList.displayName}] with URI [$uri] was provisioned by us but is no longer in configuration, removing it"
-                )
-                core.removeFriendList(friendList)
-            }
-        }
-
         for ((displayName, url) in desiredLists) {
             upsertCardDavFriendList(core, displayName, url)
         }
 
         Log.i("$TAG Persisting [${desiredUris.size}] provisioned friend list URI(s)")
-        config.setString(
+        config.setStringList(
             CONFIG_MANAGED_SECTION,
             CONFIG_FRIEND_LIST_URIS_KEY,
-            desiredUris.joinToString(",")
+            desiredUris.toTypedArray()
         )
     }
 
     @WorkerThread
     private fun readOwnedFriendListUris(config: Config): Set<String> {
-        return config.getString(CONFIG_MANAGED_SECTION, CONFIG_FRIEND_LIST_URIS_KEY, "")
-            .orEmpty()
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
+        return config.getStringList(CONFIG_MANAGED_SECTION, CONFIG_FRIEND_LIST_URIS_KEY, arrayOf())
             .toSet()
     }
 

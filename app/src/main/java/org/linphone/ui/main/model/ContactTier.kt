@@ -24,23 +24,46 @@ import org.linphone.core.SearchResult
 /**
  * Tier used to filter contacts between the OTT "Intern" and "Extern" CardDAV friend lists.
  *
- * Only search results whose friend belongs to the friend list with the matching display name
- * are shown when a tier other than [ALL] is selected. Everything else (native contacts, LDAP
- * results, raw dial strings/suggestions, results without a friend) only matches [ALL].
+ * A tier other than [ALL] only matches search results whose friend belongs to the friend
+ * list provisioned with the corresponding CardDAV URI (read from the [CONFIG_SECTION]
+ * configuration section, keys [CONFIG_INTERN_URL_KEY]/[CONFIG_EXTERN_URL_KEY], and computed
+ * once per filter run by the caller - never per result). When no URI was provisioned for a
+ * tier (stock configuration without OTT provisioning, null/empty URI), the friend list
+ * display name is used as a fallback. Everything else (native contacts, LDAP results, raw
+ * dial strings/suggestions, results without a friend) only matches [ALL].
  */
 enum class ContactTier {
     ALL,
     INTERN,
     EXTERN;
 
-    fun matches(result: SearchResult): Boolean {
+    fun matches(result: SearchResult, internUri: String?, externUri: String): Boolean {
         if (this == ALL) return true
-        val listName = result.friend?.friendList?.displayName
-        val expected = if (this == INTERN) INTERN_FRIEND_LIST_NAME else EXTERN_FRIEND_LIST_NAME
-        return listName == expected
+        val friendList = result.friend?.friendList ?: return false
+        return when (this) {
+            INTERN -> {
+                if (internUri != null) {
+                    friendList.uri == internUri
+                } else {
+                    friendList.displayName == INTERN_FRIEND_LIST_NAME
+                }
+            }
+            EXTERN -> {
+                if (externUri.isNotEmpty()) {
+                    friendList.uri == externUri
+                } else {
+                    friendList.displayName == EXTERN_FRIEND_LIST_NAME
+                }
+            }
+            ALL -> true
+        }
     }
 
     companion object {
+        const val CONFIG_SECTION = "ott"
+        const val CONFIG_INTERN_URL_KEY = "carddav_intern_url"
+        const val CONFIG_EXTERN_URL_KEY = "carddav_extern_url"
+
         const val INTERN_FRIEND_LIST_NAME = "Intern"
         const val EXTERN_FRIEND_LIST_NAME = "Extern"
     }

@@ -365,11 +365,22 @@ class ContactsListViewModel
     @WorkerThread
     private fun processMagicSearchResults(results: Array<SearchResult>, favourites: Boolean) {
         // Do not call destroy() on previous list items as they are cached and will be re-used
+        val config = coreContext.core.config
+        val internUri = config.getString(
+            ContactTier.CONFIG_SECTION,
+            ContactTier.CONFIG_INTERN_URL_KEY,
+            ""
+        ).orEmpty().trim().ifEmpty { null }
+        val externUri = config.getString(
+            ContactTier.CONFIG_SECTION,
+            ContactTier.CONFIG_EXTERN_URL_KEY,
+            ""
+        ).orEmpty().trim()
         val tier = contactTier.value ?: ContactTier.ALL
         val filteredResults: List<SearchResult> = if (tier == ContactTier.ALL) {
             results.toList()
         } else {
-            results.filter { tier.matches(it) }
+            results.filter { tier.matches(it, internUri, externUri) }
         }
         Log.i("$TAG Processing [${results.size}] results, favourites is [$favourites], [${filteredResults.size}] of them matching tier [$tier]")
 

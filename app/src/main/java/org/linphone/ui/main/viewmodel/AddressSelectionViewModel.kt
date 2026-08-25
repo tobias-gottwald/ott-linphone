@@ -325,11 +325,22 @@ abstract class AddressSelectionViewModel
 
     @WorkerThread
     private fun processMagicSearchResults(results: Array<SearchResult>) {
+        val config = coreContext.core.config
+        val internUri = config.getString(
+            ContactTier.CONFIG_SECTION,
+            ContactTier.CONFIG_INTERN_URL_KEY,
+            ""
+        ).orEmpty().trim().ifEmpty { null }
+        val externUri = config.getString(
+            ContactTier.CONFIG_SECTION,
+            ContactTier.CONFIG_EXTERN_URL_KEY,
+            ""
+        ).orEmpty().trim()
         val tier = contactTier.value ?: ContactTier.ALL
         val filteredResults: List<SearchResult> = if (tier == ContactTier.ALL) {
             results.toList()
         } else {
-            results.filter { tier.matches(it) }
+            results.filter { tier.matches(it, internUri, externUri) }
         }
         Log.i("$TAG Processing [${results.size}] results, [${filteredResults.size}] of them matching tier [$tier]")
 
@@ -345,7 +356,7 @@ abstract class AddressSelectionViewModel
         // Make a quick synchronous search for favorites (in case of total results exceed magic search limit to prevent missing ones)
         // TODO FIXME: to improve like it's done in ContactsListViewModel but will require UI changes
         val favorites = favouritesMagicSearch.getContactsList(currentFilter, domain, MagicSearch.Source.FavoriteFriends.toInt(), MagicSearch.Aggregation.Friend).filter {
-            tier.matches(it)
+            tier.matches(it, internUri, externUri)
         }
         for (result in favorites) {
             val address = result.address
