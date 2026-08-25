@@ -2,8 +2,8 @@ name: Android CI
 
 on:
   push:
+    branches: [master, ott/master]
   pull_request:
-
 jobs:
   build:
     name: Build debug APK
