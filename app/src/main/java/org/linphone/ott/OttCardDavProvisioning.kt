@@ -123,6 +123,24 @@ object OttCardDavProvisioning {
         val password = config.getString(CONFIG_SECTION, CONFIG_PASSWORD_KEY, "").orEmpty().trim()
         val realm = config.getString(CONFIG_SECTION, CONFIG_REALM_KEY, "").orEmpty().trim()
         if (username.isNotEmpty() && password.isNotEmpty() && realm.isNotEmpty()) {
+            // Rotating the managed identity must drop the previously owned auth
+            // info here, otherwise full deprovisioning would only remove the
+            // newest one and the stale identity (and its secret) would leak.
+            val ownedAuthIdentity = readOwnedAuthIdentity(config)
+            if (ownedAuthIdentity != null && ownedAuthIdentity != (username to realm)) {
+                val (oldUsername, oldRealm) = ownedAuthIdentity
+                val oldAuthInfo = core.findAuthInfo(oldRealm, oldUsername, null)
+                if (oldAuthInfo != null) {
+                    Log.i(
+                        "$TAG Auth info with username [$oldUsername] and realm [$oldRealm] was provisioned by us but the identity changed, removing it"
+                    )
+                    core.removeAuthInfo(oldAuthInfo)
+                } else {
+                    Log.i(
+                        "$TAG Auth info with username [$oldUsername] and realm [$oldRealm] was provisioned by us and the identity changed, but it is already gone, nothing to remove"
+                    )
+                }
+            }
             val foundAuthInfo = core.findAuthInfo(realm, username, null)
             if (foundAuthInfo != null) {
                 Log.i(
