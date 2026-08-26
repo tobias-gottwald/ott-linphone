@@ -37,12 +37,16 @@ import org.linphone.core.tools.Log
  * of provisioned URIs is persisted in the [ott_managed] configuration section
  * (key [OttCardDavProvisioning.CONFIG_FRIEND_LIST_URIS_KEY]) and friend lists
  * recorded there but no longer configured are removed - lists not provisioned by
- * this app are never touched.
+ * this app are never touched. The identity of the provisioned CardDAV auth info
+ * is persisted next to them (key
+ * [OttCardDavProvisioning.CONFIG_MANAGED_AUTH_KEY]) so full deprovisioning can
+ * remove exactly that auth info and nothing else.
  *
  * When the [ott] section is missing entirely the configuration is considered
  * stock and nothing at all is touched (log only). When the section exists but
- * both CardDAV URLs are empty, every previously provisioned friend list is
- * removed (full deprovisioning) and no new list is created.
+ * both CardDAV URLs are empty, every previously provisioned friend list and the
+ * provisioned CardDAV auth info are removed (full deprovisioning) and no new
+ * list is created.
  */
 object OttCardDavProvisioning {
     private const val TAG = "[OTT CardDAV Provisioning]"
@@ -56,6 +60,15 @@ object OttCardDavProvisioning {
 
     private const val CONFIG_MANAGED_SECTION = "ott_managed"
     private const val CONFIG_FRIEND_LIST_URIS_KEY = "friend_list_uris"
+
+    /**
+     * Identity (username + realm) of the CardDAV auth info provisioned by
+     * [apply], persisted as a string list holding exactly one entry formatted
+     * `<username>@<realm>`. Reading it back splits on the LAST `@` so usernames
+     * that themselves contain `@` (e-mail style logins) stay intact - realms
+     * never contain `@`.
+     */
+    private const val CONFIG_MANAGED_AUTH_KEY = "carddav_auth"
 
     private const val INTERN_LIST_NAME = "Intern"
     private const val EXTERN_LIST_NAME = "Extern"
@@ -97,6 +110,7 @@ object OttCardDavProvisioning {
             Log.i(
                 "$TAG No CardDAV URL left in [$CONFIG_SECTION] configuration section, all provisioned friend lists have been removed and none will be created"
             )
+            removeOwnedAuthInfo(core, config)
             config.setStringList(
                 CONFIG_MANAGED_SECTION,
                 CONFIG_FRIEND_LIST_URIS_KEY,
@@ -127,6 +141,12 @@ object OttCardDavProvisioning {
                 null
             )
             core.addAuthInfo(authInfo)
+            Log.i("$TAG Persisting provisioned CardDAV auth identity [$username@$realm]")
+            config.setStringList(
+                CONFIG_MANAGED_SECTION,
+                CONFIG_MANAGED_AUTH_KEY,
+                arrayOf("$username@$realm")
+            )
         } else {
             Log.i(
                 "$TAG CardDAV credentials in [$CONFIG_SECTION] configuration section incomplete, skipping auth info"
@@ -149,6 +169,49 @@ object OttCardDavProvisioning {
     private fun readOwnedFriendListUris(config: Config): Set<String> {
         return config.getStringList(CONFIG_MANAGED_SECTION, CONFIG_FRIEND_LIST_URIS_KEY, arrayOf())
             .toSet()
+    }
+
+    @WorkerThread
+    private fun readOwnedAuthIdentity(config: Config): Pair<String, String>? {
+        val entry = config.getStringList(CONFIG_MANAGED_SECTION, CONFIG_MANAGED_AUTH_KEY, arrayOf())
+            .firstOrNull() ?: return null
+        val username = entry.substringBeforeLast('@')
+        val realm = entry.substringAfterLast('@')
+        if (username.isEmpty() || realm.isEmpty()) {
+            Log.w(
+                "$TAG Persisted CardDAV auth identity [$entry] in [$CONFIG_MANAGED_SECTION] section is malformed, ignoring it"
+            )
+            return null
+        }
+        return username to realm
+    }
+
+    @WorkerThread
+    private fun removeOwnedAuthInfo(core: Core, config: Config) {
+        val ownedAuthIdentity = readOwnedAuthIdentity(config)
+        if (ownedAuthIdentity != null) {
+            val (username, realm) = ownedAuthIdentity
+            val foundAuthInfo = core.findAuthInfo(realm, username, null)
+            if (foundAuthInfo != null) {
+                Log.i(
+                    "$TAG Auth info with username [$username] and realm [$realm] was provisioned by us but no CardDAV URL is left, removing it"
+                )
+                core.removeAuthInfo(foundAuthInfo)
+            } else {
+                Log.i(
+                    "$TAG Auth info with username [$username] and realm [$realm] was provisioned by us but is already gone, nothing to remove"
+                )
+            }
+        } else {
+            Log.i(
+                "$TAG No CardDAV auth identity recorded in [$CONFIG_MANAGED_SECTION] section, nothing to remove"
+            )
+        }
+        config.setStringList(
+            CONFIG_MANAGED_SECTION,
+            CONFIG_MANAGED_AUTH_KEY,
+            arrayOf()
+        )
     }
 
     @WorkerThread
