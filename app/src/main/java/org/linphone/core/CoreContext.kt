@@ -802,6 +802,16 @@ class CoreContext
             Log.i("$TAG No configuration migration required")
         }
 
+        // OTT: cap the log-collection ring so the zipped upload always stays
+        // under our own upload endpoint's 20MB limit (sidecar rejects larger
+        // with 413). 6MB per file ≈ ≤18MB raw ring; zipped text is far smaller.
+        // The setter only changes a process-global (not persisted to
+        // linphonerc), so it must be applied on every core start.
+        if (core.logCollectionMaxFileSize != 6 * 1024 * 1024) {
+            Log.i("$TAG Capping log collection max file size to 6MB")
+            core.logCollectionMaxFileSize = 6 * 1024 * 1024
+        }
+
         contactsManager.onCoreStarted(core)
         telecomManager.onCoreStarted(core)
         notificationsManager.onCoreStarted(core, oldVersion < 600000) // Re-create channels when migrating from a non 6.0 version
