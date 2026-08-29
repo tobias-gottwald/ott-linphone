@@ -37,8 +37,9 @@ import org.linphone.core.MagicSearchListenerStub
 import org.linphone.core.SearchResult
 import org.linphone.mediastream.Log
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
-import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
+import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
+import org.linphone.ui.main.model.ContactStore
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
 import org.linphone.ui.main.model.SelectedAddressModel
@@ -82,6 +83,11 @@ abstract class AddressSelectionViewModel
     protected var magicSearchSourceFlags = MagicSearch.Source.All.toInt()
 
     protected var skipConversation: Boolean = true
+
+    // When true (transfer picker), contact results sort same-store internal
+    // entries before other stores (oc-cb72); suggestions keep pure
+    // alphabetical order.
+    private var sameStoreFirstSorting = false
 
     private var currentFilter = ""
     private var previousFilter = "NotSet"
@@ -209,6 +215,20 @@ abstract class AddressSelectionViewModel
                 "0"
             )
         )
+    }
+
+    @UiThread
+    fun updateSameStoreFirstSorting(enabled: Boolean) {
+        if (sameStoreFirstSorting == enabled) return
+
+        Log.i("$TAG Same-store-first sorting changed to [$enabled], re-applying current filter")
+        sameStoreFirstSorting = enabled
+
+        coreContext.postOnCoreThread {
+            // Sorting is applied client-side in processMagicSearchResults, so
+            // re-running the (cached) search is enough to re-order the list.
+            applyFilter(currentFilter, magicSearchSourceFlags)
+        }
     }
 
     @WorkerThread
@@ -438,6 +458,33 @@ abstract class AddressSelectionViewModel
         }
         suggestionsList.sortWith { model1, model2 ->
             collator.compare(model1.name, model2.name)
+        }
+
+        // Transfer picker (oc-cb72): same-store internal contacts first, then
+        // everything else; within both groups the alphabetical order above is
+        // kept. Suggestions (raw numbers/addresses, no store) keep plain
+        // alphabetical order. Store = first digit of the four-digit extension.
+        if (sameStoreFirstSorting) {
+            val ownPrefix = ContactStore.storePrefix(
+                LinphoneUtils.getDefaultAccount()?.params?.identityAddress?.username
+            )
+            if (ownPrefix != null) {
+                val storeComparator =
+                    Comparator<ConversationContactOrSuggestionModel> { model1, model2 ->
+                        val sameStore1 = ContactStore.isSameStore(model1.address.username, ownPrefix)
+                        val sameStore2 = ContactStore.isSameStore(model2.address.username, ownPrefix)
+                        if (sameStore1 != sameStore2) {
+                            if (sameStore1) -1 else 1
+                        } else {
+                            collator.compare(model1.name, model2.name)
+                        }
+                    }
+                favoritesList.sortWith(storeComparator)
+                contactsList.sortWith(storeComparator)
+                Log.i("$TAG Sorted contacts and favorites with same-store (prefix [$ownPrefix]) entries first")
+            } else {
+                Log.w("$TAG Own extension has no store prefix, keeping alphabetical order")
+            }
         }
 
         val list = arrayListOf<ConversationContactOrSuggestionModel>()

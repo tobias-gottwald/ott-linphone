@@ -124,6 +124,8 @@ class TransferCallFragment : GenericCallFragment() {
         // View model is shared with NewCallFragment through the call nav graph,
         // so make sure its default tier is applied every time this fragment is entered
         viewModel.updateContactTier(ContactTier.INTERN)
+        // Same-store internal contacts first in the transfer picker (oc-cb72)
+        viewModel.updateSameStoreFirstSorting(true)
         return binding.root
     }
 

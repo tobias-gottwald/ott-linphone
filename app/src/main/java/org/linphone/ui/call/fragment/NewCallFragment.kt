@@ -108,6 +108,9 @@ class NewCallFragment : GenericCallFragment() {
         // View model is shared with TransferCallFragment through the call nav graph,
         // so make sure its default tier is applied every time this fragment is entered
         viewModel.updateContactTier(ContactTier.ALL)
+        // Restore the shared view model's default sorting after a possible
+        // transfer-picker visit (oc-cb72)
+        viewModel.updateSameStoreFirstSorting(false)
         return binding.root
     }
 
