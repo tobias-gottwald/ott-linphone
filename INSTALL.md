@@ -72,6 +72,25 @@ adb install -r app/build/outputs/apk/debug/linphone-android-debug-*.apk
   - `adb uninstall de.otthoeren.linphone` — clean slate for fresh-install QR
     onboarding tests
 
+To push the same APK to **every** connected device in one go, one parallel
+streamed install per device (APK path is the argument). Git Bash — define
+once, then call:
+
+```
+adb-install-all() { adb devices | awk 'NR>1 && $2=="device" {print $1}' | xargs -r -P0 -I{} adb -s {} install -r "$1"; }
+adb-install-all app/build/outputs/apk/debug/linphone-android-debug-*.apk
+```
+
+PowerShell 7+ (`ForEach-Object -Parallel`):
+
+```
+function adb-install-all($apk) { adb devices | Select-String "device$" | ForEach-Object { $_.Line.Split()[0] } | ForEach-Object -Parallel { adb -s $_ install -r $using:apk } -ThrottleLimit 16 }
+adb-install-all app/build/outputs/apk/debug/linphone-android-debug-*.apk
+```
+
+Only serials in `device` state are targeted (`offline`/`unauthorized` are
+skipped); the installs run concurrently and their output streams interleave.
+
 ## Build a release APK (realistic performance, pilot builds)
 
 Debug builds skip R8 minification and ship with `android:debuggable`, which

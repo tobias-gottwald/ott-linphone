@@ -247,10 +247,21 @@ class ContactsListViewModel
         coreContext.postOnCoreThread {
             // Tiered results are filtered client-side once MagicSearch returns them,
             // so the search itself must not be truncated by the results limit while
-            // a tier other than ALL is active
+            // a tier other than ALL is active.
+            val wasLimitedSearch = magicSearch.limitedSearch
             magicSearch.limitedSearch = tier == ContactTier.ALL
-            magicSearch.resetSearchCache()
-            applyFilter(currentFilter, domainFilter, filterChanged = true)
+            if (wasLimitedSearch != magicSearch.limitedSearch) {
+                // Crossing the ALL boundary changes result truncation, so the
+                // search has to re-run from a cleared cache.
+                magicSearch.resetSearchCache()
+                applyFilter(currentFilter, domainFilter, filterChanged = true)
+            } else {
+                // INTERN <-> EXTERN only changes the client-side filter:
+                // re-filter the cached results (contacts AND favourites)
+                // instead of re-running the whole search.
+                processMagicSearchResults(magicSearch.lastSearch, favourites = false)
+                processMagicSearchResults(favouritesMagicSearch.lastSearch, favourites = true)
+            }
         }
     }
 

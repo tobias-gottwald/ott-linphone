@@ -43,20 +43,31 @@ enum class ContactTier {
         return when (this) {
             INTERN -> {
                 if (internUri != null) {
-                    friendList.uri == internUri
+                    isProvisionedListUri(friendList.uri, internUri)
                 } else {
                     friendList.displayName == INTERN_FRIEND_LIST_NAME
                 }
             }
             EXTERN -> {
                 if (externUri.isNotEmpty()) {
-                    friendList.uri == externUri
+                    isProvisionedListUri(friendList.uri, externUri)
                 } else {
                     friendList.displayName == EXTERN_FRIEND_LIST_NAME
                 }
             }
             ALL -> true
         }
+    }
+
+    /**
+     * liblinphone persists the DISCOVERED addressbook collection URI in the
+     * friend list, and our sidecar advertises the addressbook-home-set as the
+     * provisioned collection + "/book" (pbx_sidecar/src/carddav.js), so a
+     * provisioned list's URI is either spelling.
+     */
+    private fun isProvisionedListUri(listUri: String?, provisionedUri: String): Boolean {
+        if (listUri == null) return false
+        return listUri == provisionedUri || listUri == "$provisionedUri/book"
     }
 
     companion object {
