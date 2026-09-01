@@ -15,6 +15,10 @@
 
     <!-- Starting Android 13 we need to ask notification permission -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- OTT: lets the app open the system dialog that exempts it from
+         battery optimizations. Without the exemption a push-woken cold
+         start can take ~20s to reach SIP REGISTER, missing inbound calls. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <!-- Needed for full screen intent in incoming call notifications -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />

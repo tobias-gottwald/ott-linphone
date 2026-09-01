@@ -681,6 +681,7 @@
     <string name="generic_address_picker_suggestions_list_title">Vorschläge</string>
     <string name="post_notifications_permission_not_granted">Berechtigung zum Posten von Benachrichtigungen nicht erteilt!</string>
     <string name="full_screen_intent_permission_not_granted">Berechtigung zum Anzeigen eingehender Anrufe nicht erteilt!</string>
+    <string name="battery_optimizations_not_disabled">Akkuoptimierung nicht deaktiviert!</string>
     <plurals name="mwi_messages_are_waiting">
         <item quantity="one">%s neue Sprachnachricht</item>
         <item quantity="other">%s neue Sprachnachrichten</item>

@@ -133,6 +133,13 @@ class PermissionsFragment : GenericFragment() {
             )
             Compatibility.requestFullScreenIntentPermission(requireContext())
         }
+
+        if (!Compatibility.isIgnoringBatteryOptimizations(requireContext())) {
+            Log.w(
+                "$TAG Battery optimizations haven't been disabled, asking for exemption now"
+            )
+            Compatibility.requestIgnoreBatteryOptimizations(requireContext())
+        }
     }
 
     override fun onResume() {

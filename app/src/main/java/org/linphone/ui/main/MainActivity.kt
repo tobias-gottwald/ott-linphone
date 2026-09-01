@@ -237,6 +237,17 @@ class MainActivity : GenericActivity() {
             }
         }
 
+        viewModel.askBatteryOptimizationExemptionEvent.observe(this) {
+            it.consume {
+                if (Compatibility.isIgnoringBatteryOptimizations(this)) {
+                    Log.i("$TAG Battery optimizations exemption already granted")
+                } else {
+                    Log.w("$TAG Asking for battery optimizations exemption")
+                    Compatibility.requestIgnoreBatteryOptimizations(this)
+                }
+            }
+        }
+
         viewModel.askAccessLocalNetworkPermissionEvent.observe(this) {
             it.consume {
                 Log.w("$TAG Asking for ACCESS_LOCAL_NETWORK permission")

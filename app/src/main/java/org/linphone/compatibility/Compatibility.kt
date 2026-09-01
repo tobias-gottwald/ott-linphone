@@ -126,6 +126,32 @@ class Compatibility {
             return false
         }
 
+        /**
+         * OTT: whether the app is exempt from battery optimizations (Doze).
+         * Without the exemption a push-woken cold start can take ~20s to
+         * reach SIP REGISTER — far past the 8s late-join window of an
+         * inbound call fan-out.
+         */
+        fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        }
+
+        /**
+         * OTT: open the system dialog asking to exempt this app from
+         * battery optimizations ("Allow background activity"). Requires the
+         * REQUEST_IGNORE_BATTERY_OPTIMIZATIONS manifest permission.
+         */
+        fun requestIgnoreBatteryOptimizations(context: Context) {
+            // See https://developer.android.com/reference/android/provider/Settings#ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+            val intent = Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                Uri.parse("package:${context.packageName}")
+            )
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
+
         fun isPostNotificationsPermissionGranted(context: Context): Boolean {
             if (Version.sdkAboveOrEqual(Version.API33_ANDROID_13_TIRAMISU)) {
                 return Api33Compatibility.isPostNotificationsPermissionGranted(context)

@@ -60,6 +60,7 @@ class MainViewModel
         const val NON_DEFAULT_ACCOUNT_NOT_CONNECTED = 10
         const val FULL_SCREEN_INTENTS_PERMISSION_NOT_GRANTED = 14
         const val SEND_NOTIFICATIONS_PERMISSION_NOT_GRANTED = 15
+        const val BATTERY_OPTIMIZATIONS_NOT_DISABLED = 20
         const val DEFAULT_ACCOUNT_DISABLED = 18
         const val NETWORK_NOT_REACHABLE = 19
     }
@@ -95,6 +96,10 @@ class MainViewModel
     }
 
     val askFullScreenIntentPermissionEvent: MutableLiveData<Event<Boolean>> by lazy {
+        MutableLiveData()
+    }
+
+    val askBatteryOptimizationExemptionEvent: MutableLiveData<Event<Boolean>> by lazy {
         MutableLiveData()
     }
 
@@ -446,10 +451,16 @@ class MainViewModel
             coreContext.postOnCoreThread {
                 checkFullScreenIntentNotificationPermission()
                 checkPostNotificationsPermission()
+                checkBatteryOptimization()
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             coreContext.postOnCoreThread {
                 checkPostNotificationsPermission()
+                checkBatteryOptimization()
+            }
+        } else {
+            coreContext.postOnCoreThread {
+                checkBatteryOptimization()
             }
         }
     }
@@ -497,6 +508,8 @@ class MainViewModel
             askFullScreenIntentPermissionEvent.value = Event(true)
         } else if (!Compatibility.isPostNotificationsPermissionGranted(coreContext.context)) {
             askPostNotificationsPermissionEvent.value = Event(true)
+        } else if (!Compatibility.isIgnoringBatteryOptimizations(coreContext.context)) {
+            askBatteryOptimizationExemptionEvent.value = Event(true)
         } else if (mwiNewMessages) {
             coreContext.postOnCoreThread {
                 callVoiceMail()
@@ -735,6 +748,22 @@ class MainViewModel
             }
         } else {
             removeAlert(SEND_NOTIFICATIONS_PERMISSION_NOT_GRANTED)
+        }
+    }
+
+    @WorkerThread
+    private fun checkBatteryOptimization() {
+        if (!Compatibility.isIgnoringBatteryOptimizations(coreContext.context)) {
+            Log.w("$TAG Battery optimizations haven't been disabled!")
+            val label = AppUtils.getString(R.string.battery_optimizations_not_disabled)
+            coreContext.postOnCoreThread {
+                addAlert(BATTERY_OPTIMIZATIONS_NOT_DISABLED, label)
+            }
+            coreContext.postOnMainThread {
+                askBatteryOptimizationExemptionEvent.value = Event(true)
+            }
+        } else {
+            removeAlert(BATTERY_OPTIMIZATIONS_NOT_DISABLED)
         }
     }
 
