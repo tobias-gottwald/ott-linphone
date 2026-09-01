@@ -70,6 +70,20 @@ enum class ContactTier {
         return listUri == provisionedUri || listUri == "$provisionedUri/book"
     }
 
+    /**
+     * Domain argument a tier-filtered contacts search must pass to MagicSearch.
+     *
+     * liblinphone only returns a friend's PHONE numbers when the search domain
+     * is empty (magic-search.cpp searchInFriend: with any non-empty domain —
+     * "*" included — a friend needs a matching SIP address; a TEL-only friend
+     * is never returned). The "Extern" list holds TEL-only shared-supplier
+     * vCards and TEL-only fax rows land in "Intern" (pbx_sidecar carddav.js
+     * only gives dialable SIP targets an IMPP), so tiered searches must run
+     * without a domain filter and rely on the client-side tier matching.
+     * [ALL] keeps the user's contacts filter ("SIP/Linphone only" views).
+     */
+    fun searchDomain(userFilter: String): String = if (this == ALL) userFilter else ""
+
     companion object {
         const val CONFIG_SECTION = "ott"
         const val CONFIG_INTERN_URL_KEY = "carddav_intern_url"

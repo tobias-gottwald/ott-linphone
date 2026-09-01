@@ -188,7 +188,8 @@ abstract class AddressSelectionViewModel
 
     @UiThread
     fun updateContactTier(tier: ContactTier) {
-        if (contactTier.value == tier) return
+        val previousTier = contactTier.value
+        if (previousTier == tier) return
 
         Log.i("$TAG Contact tier filter changed to [$tier], re-applying current filter")
         contactTier.value = tier
@@ -199,9 +200,14 @@ abstract class AddressSelectionViewModel
             // a tier other than ALL is active.
             val wasLimitedSearch = magicSearch.limitedSearch
             magicSearch.limitedSearch = tier == ContactTier.ALL
-            if (wasLimitedSearch != magicSearch.limitedSearch) {
-                // Crossing the ALL boundary changes result truncation, so the
-                // search has to re-run from a cleared cache.
+            // Tiers search without a domain filter (TEL-only friends are only
+            // returned that way), ALL searches with the user's contacts filter,
+            // so crossing the ALL boundary also changes the search domain.
+            val searchDomainChanged = previousTier?.searchDomain(corePreferences.contactsFilter) !=
+                tier.searchDomain(corePreferences.contactsFilter)
+            if (wasLimitedSearch != magicSearch.limitedSearch || searchDomainChanged) {
+                // Crossing the ALL boundary changes result truncation and the
+                // search domain, so the search has to re-run from a cleared cache.
                 magicSearch.resetSearchCache()
                 applyFilter(currentFilter, magicSearchSourceFlags)
             } else {
@@ -339,9 +345,13 @@ abstract class AddressSelectionViewModel
         currentFilter = filter
         previousFilter = filter
 
-        val domain = corePreferences.contactsFilter
+        // Tiered lists (INTERN/EXTERN) hold TEL-only friends (extern suppliers,
+        // fax rows), which MagicSearch only returns when the domain filter is
+        // empty — the user's contacts filter applies to ALL only.
+        val tier = contactTier.value ?: ContactTier.ALL
+        val domain = tier.searchDomain(corePreferences.contactsFilter)
         Log.i(
-            "$TAG Asking Magic search for contacts matching filter [$filter], domain [$domain] and in sources [$sources]"
+            "$TAG Asking Magic search for contacts matching filter [$filter], domain [$domain] for tier [$tier] and in sources [$sources]"
         )
         searchInProgress.postValue(filter.isNotEmpty())
         showResultsLimitReached.postValue(false)
@@ -382,7 +392,9 @@ abstract class AddressSelectionViewModel
 
         val defaultAccountDomain = LinphoneUtils.getDefaultAccount()?.params?.domain
         val favoritesList = arrayListOf<ConversationContactOrSuggestionModel>()
-        val domain = corePreferences.contactsFilter
+        // Same tier-aware domain as the main search: TEL-only favourites must
+        // be findable under INTERN/EXTERN.
+        val domain = tier.searchDomain(corePreferences.contactsFilter)
         // Make a quick synchronous search for favorites (in case of total results exceed magic search limit to prevent missing ones)
         // TODO FIXME: to improve like it's done in ContactsListViewModel but will require UI changes
         val favorites = favouritesMagicSearch.getContactsList(currentFilter, domain, MagicSearch.Source.FavoriteFriends.toInt(), MagicSearch.Aggregation.Friend).filter {

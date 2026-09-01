@@ -239,7 +239,8 @@ class ContactsListViewModel
 
     @UiThread
     fun updateContactTier(tier: ContactTier) {
-        if (contactTier.value == tier) return
+        val previousTier = contactTier.value
+        if (previousTier == tier) return
 
         Log.i("$TAG Contact tier filter changed to [$tier], re-applying current filter")
         contactTier.value = tier
@@ -250,9 +251,14 @@ class ContactsListViewModel
             // a tier other than ALL is active.
             val wasLimitedSearch = magicSearch.limitedSearch
             magicSearch.limitedSearch = tier == ContactTier.ALL
-            if (wasLimitedSearch != magicSearch.limitedSearch) {
-                // Crossing the ALL boundary changes result truncation, so the
-                // search has to re-run from a cleared cache.
+            // Tiers search without a domain filter (TEL-only friends are only
+            // returned that way), ALL searches with the user's contacts filter,
+            // so crossing the ALL boundary also changes the search domain.
+            val searchDomainChanged =
+                previousTier?.searchDomain(domainFilter) != tier.searchDomain(domainFilter)
+            if (wasLimitedSearch != magicSearch.limitedSearch || searchDomainChanged) {
+                // Crossing the ALL boundary changes result truncation and the
+                // search domain, so the search has to re-run from a cleared cache.
                 magicSearch.resetSearchCache()
                 applyFilter(currentFilter, domainFilter, filterChanged = true)
             } else {
@@ -350,8 +356,13 @@ class ContactsListViewModel
         currentFilter = filter
         previousFilter = filter
 
+        // Tiered lists (INTERN/EXTERN) hold TEL-only friends (extern suppliers,
+        // fax rows), which MagicSearch only returns when the domain filter is
+        // empty — the user's contacts filter applies to ALL only.
+        val tier = contactTier.value ?: ContactTier.ALL
+        val searchDomain = tier.searchDomain(domain)
         Log.i(
-            "$TAG Asking Magic search for contacts matching filter [$filter], domain [$domain] and in sources Friends/LDAP/CardDAV"
+            "$TAG Asking Magic search for contacts matching filter [$filter], domain [$domain] (effective [$searchDomain] for tier [$tier]) and in sources Friends/LDAP/CardDAV"
         )
         searchInProgress.postValue(filter.isNotEmpty())
         showResultsLimitReached.postValue(false)
@@ -359,7 +370,7 @@ class ContactsListViewModel
         if (filter.isEmpty() && (favouritesList.value.orEmpty().isEmpty() || filterChanged)) {
             favouritesMagicSearch.getContactsListAsync(
                 filter,
-                domain,
+                searchDomain,
                 MagicSearch.Source.FavoriteFriends.toInt(),
                 MagicSearch.Aggregation.Friend
             )
@@ -367,7 +378,7 @@ class ContactsListViewModel
 
         magicSearch.getContactsListAsync(
             filter,
-            domain,
+            searchDomain,
             MagicSearch.Source.Friends.toInt() or MagicSearch.Source.LdapServers.toInt() or MagicSearch.Source.RemoteCardDAV.toInt(),
             MagicSearch.Aggregation.Friend
         )

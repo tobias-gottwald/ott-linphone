@@ -11,6 +11,7 @@ package org.linphone.ui.main.model
 
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.linphone.core.Friend
@@ -71,5 +72,22 @@ class ContactTierTest {
         every { noFriend.friend } returns null
         assertTrue(ContactTier.ALL.matches(noFriend, internUrl, externUrl))
         assertFalse(ContactTier.INTERN.matches(noFriend, internUrl, externUrl))
+    }
+
+    @Test
+    fun tieredSearchDropsUserDomainFilter() {
+        // MagicSearch only returns TEL-only friends when the domain filter is
+        // empty (extern suppliers, fax rows), so tiered searches must not
+        // inherit the user's contacts filter (oc-80b0).
+        assertEquals("", ContactTier.INTERN.searchDomain("*"))
+        assertEquals("", ContactTier.EXTERN.searchDomain("*"))
+        assertEquals("", ContactTier.INTERN.searchDomain("sip-internal.otthoeren.de"))
+    }
+
+    @Test
+    fun allSearchKeepsUserDomainFilter() {
+        assertEquals("*", ContactTier.ALL.searchDomain("*"))
+        assertEquals("sip-internal.otthoeren.de", ContactTier.ALL.searchDomain("sip-internal.otthoeren.de"))
+        assertEquals("", ContactTier.ALL.searchDomain(""))
     }
 }
