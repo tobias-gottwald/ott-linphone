@@ -80,9 +80,15 @@ enum class ContactTier {
      * vCards and TEL-only fax rows land in "Intern" (pbx_sidecar carddav.js
      * only gives dialable SIP targets an IMPP), so tiered searches must run
      * without a domain filter and rely on the client-side tier matching.
-     * [ALL] keeps the user's contacts filter ("SIP/Linphone only" views).
+     *
+     * "*" degrades to an unfiltered search too: upstream it silently drops
+     * every TEL-only friend, so under the fork's default SIP-only contacts
+     * filter "Alle" collapsed to the intern subset (prod finding 2026-09-02)
+     * — the SIP-only view is the INTERN pill now. A concrete domain
+     * ("Linphone contacts only") still restricts, as intended there.
      */
-    fun searchDomain(userFilter: String): String = if (this == ALL) userFilter else ""
+    fun searchDomain(userFilter: String): String =
+        if (this == ALL && userFilter != "*") userFilter else ""
 
     companion object {
         const val CONFIG_SECTION = "ott"

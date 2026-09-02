@@ -85,8 +85,13 @@ class ContactTierTest {
     }
 
     @Test
-    fun allSearchKeepsUserDomainFilter() {
-        assertEquals("*", ContactTier.ALL.searchDomain("*"))
+    fun allSearchDegradesStarButKeepsConcreteDomain() {
+        // "*" cannot express "everything" in MagicSearch — it silently drops
+        // TEL-only friends, which collapsed "Alle" to the intern subset under
+        // the fork's default SIP-only contacts filter (prod finding
+        // 2026-09-02). A concrete domain ("Linphone contacts only") keeps
+        // restricting the search.
+        assertEquals("", ContactTier.ALL.searchDomain("*"))
         assertEquals("sip-internal.otthoeren.de", ContactTier.ALL.searchDomain("sip-internal.otthoeren.de"))
         assertEquals("", ContactTier.ALL.searchDomain(""))
     }
