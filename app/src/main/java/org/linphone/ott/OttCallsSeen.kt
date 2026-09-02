@@ -29,10 +29,10 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.core.AuthInfo
-import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.GlobalState
 import org.linphone.core.tools.Log
+import org.linphone.utils.LinphoneUtils
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -230,7 +230,10 @@ object OttCallsSeen {
 
             val watermark = currentSeenAt()
             val newestMissedCallStartDate = core.callLogs
-                .filter { it.dir != Call.Dir.Outgoing && it.status == Call.Status.Missed }
+                // Same definition as the notification trigger (oc-3acb):
+                // Aborted/EarlyAborted missed calls clear together with
+                // status==Missed ones.
+                .filter { LinphoneUtils.isCallLogMissed(it) }
                 .maxOfOrNull { it.startDate }
             if (newestMissedCallStartDate == null || newestMissedCallStartDate > watermark) {
                 Log.i(

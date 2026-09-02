@@ -41,6 +41,7 @@ import org.linphone.R
 import org.linphone.core.tools.Log
 import org.linphone.databinding.BottomNavBarBinding
 import org.linphone.databinding.MainActivityTopBarBinding
+import org.linphone.ott.OttCallsSeen
 import org.linphone.ui.main.MainActivity
 import org.linphone.ui.main.chat.fragment.ConversationsListFragmentDirections
 import org.linphone.ui.main.contacts.fragment.ContactsListFragmentDirections
@@ -138,6 +139,16 @@ abstract class AbstractMainFragment : GenericMainFragment() {
 
         viewModel.missedCallsCount.observe(viewLifecycleOwner) {
             sharedViewModel.refreshDrawerMenuAccountsListEvent.value = Event(false)
+        }
+
+        // Calls-seen watermark moved (FCM push, startup GET or local advance):
+        // OttCallsSeen resets the core counter and dismisses the system
+        // notification, the in-app badge LiveData must be recomputed too
+        // (oc-3acb).
+        OttCallsSeen.seenAt.observe(viewLifecycleOwner) {
+            coreContext.postOnCoreThread {
+                viewModel.updateMissedCallsCount()
+            }
         }
 
         viewModel.navigateToContactsEvent.observe(viewLifecycleOwner) {
