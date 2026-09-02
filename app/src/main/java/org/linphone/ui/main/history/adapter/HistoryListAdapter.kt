@@ -20,6 +20,7 @@
 package org.linphone.ui.main.history.adapter
 
 import android.content.Context
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -192,6 +193,16 @@ class HistoryListAdapter :
                 model = callLogModel
 
                 binding.root.isSelected = bindingAdapterPosition == selectedAdapterPosition
+
+                // OTT: incoming calls newer than the location's shared
+                // calls-seen watermark are shown in bold until the calls
+                // have been seen on any device (or the dashboard).
+                name.setTypeface(
+                    Typeface.create(
+                        name.typeface,
+                        if (callLogModel.isUnseen) Typeface.BOLD else Typeface.NORMAL
+                    )
+                )
 
                 executePendingBindings()
             }

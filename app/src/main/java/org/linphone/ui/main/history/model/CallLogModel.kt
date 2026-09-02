@@ -19,14 +19,17 @@
  */
 package org.linphone.ui.main.history.model
 
+import androidx.annotation.AnyThread
 import androidx.annotation.IntegerRes
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
+import org.linphone.core.Call
 import org.linphone.core.CallLog
 import org.linphone.core.tools.Log
+import org.linphone.ott.OttCallsSeen
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
 import org.linphone.utils.AppUtils
 import org.linphone.utils.LinphoneUtils
@@ -43,6 +46,8 @@ class CallLogModel
 
     val timestamp = callLog.startDate
 
+    private val dir = callLog.dir
+
     val address = callLog.remoteAddress
 
     val sipUri = address.asStringUriOnly()
@@ -55,6 +60,16 @@ class CallLogModel
 
     @IntegerRes
     val iconResId: Int
+
+    /**
+     * True while this call log is an incoming (not outgoing) call that is
+     * newer than the location's shared calls-seen watermark, ie it hasn't
+     * been seen on any device yet: the history list displays it in bold.
+     * See org.linphone.ott.OttCallsSeen.
+     */
+    val isUnseen: Boolean
+        @AnyThread
+        get() = dir != Call.Dir.Outgoing && timestamp > OttCallsSeen.currentSeenAt()
 
     val dateTime: String
 

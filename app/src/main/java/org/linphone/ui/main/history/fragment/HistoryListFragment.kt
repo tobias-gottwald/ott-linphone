@@ -37,6 +37,7 @@ import org.linphone.R
 import org.linphone.contacts.getListOfSipAddressesAndPhoneNumbers
 import org.linphone.core.Address
 import org.linphone.core.tools.Log
+import org.linphone.ott.OttCallsSeen
 import org.linphone.databinding.HistoryListFragmentBinding
 import org.linphone.ui.GenericActivity
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
@@ -264,6 +265,14 @@ class HistoryListFragment : AbstractMainFragment() {
             }
         }
 
+        // OTT: re-bind the rows whenever the shared calls-seen watermark
+        // advances (FCM push from another device or server response) so the
+        // bold "not seen yet" highlighting is updated.
+        OttCallsSeen.seenAt.observe(viewLifecycleOwner) {
+            Log.i("$TAG Calls-seen watermark changed to [$it], re-binding history list")
+            adapter.notifyDataSetChanged()
+        }
+
         sharedViewModel.forceRefreshCallLogsListEvent.observe(viewLifecycleOwner) {
             it.consume {
                 Log.i("$TAG Re-compute call log history")
@@ -321,6 +330,10 @@ class HistoryListFragment : AbstractMainFragment() {
 
         Log.i("$TAG Fragment is resumed, resetting missed calls count")
         sharedViewModel.resetMissedCallsCountEvent.value = Event(true)
+        // OTT: announce to the PBX that this location's calls have been seen;
+        // the watermark returned by the server (re)sets the local one, which
+        // un-bolds the incoming rows older than it.
+        OttCallsSeen.markCallsSeen()
         sharedViewModel.refreshDrawerMenuAccountsListEvent.value = Event(false)
 
         if (shouldRefreshDataInOnResume()) {

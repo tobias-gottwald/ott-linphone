@@ -824,6 +824,19 @@ class NotificationsManager
         notify(MISSED_CALL_ID, notification, MISSED_CALL_TAG)
     }
 
+    /**
+     * OTT: dismisses the missed call notification, whatever its current
+     * count. Called when the shared calls-seen watermark (see
+     * org.linphone.ott.OttCallsSeen) covers all missed call logs, ie the
+     * calls have been seen on another device of the location or on the
+     * dashboard.
+     */
+    @AnyThread
+    fun dismissMissedCallNotification() {
+        Log.i("$TAG Dismissing missed call notification")
+        cancelNotification(MISSED_CALL_ID, MISSED_CALL_TAG)
+    }
+
     @WorkerThread
     private fun showIncomingCallForegroundServiceNotification(notificationId: Int, notification: Notification) {
         Log.i("$TAG Trying to start foreground Service using incoming call notification")
