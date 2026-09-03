@@ -72,6 +72,7 @@ import org.linphone.core.Friend
 import org.linphone.core.MediaDirection
 import org.linphone.core.RegistrationState
 import org.linphone.core.tools.Log
+import org.linphone.ott.OttCallsSeen
 import org.linphone.ui.call.CallActivity
 import org.linphone.ui.main.MainActivity
 import org.linphone.ui.main.MainActivity.Companion.ARGUMENTS_CHAT
@@ -779,7 +780,15 @@ class NotificationsManager
 
     @WorkerThread
     private fun showMissedCallNotification(call: Call) {
-        val missedCallCount: Int = coreContext.core.missedCallsCount
+        // OTT (oc-2532): when the calls-seen feature is configured the
+        // count is the location-wide unseen one (per-call matching via
+        // embedded call ids, same source as the in-app badge); stock
+        // devices keep the core counter.
+        val missedCallCount: Int = if (OttCallsSeen.isConfigured()) {
+            OttCallsSeen.unseenMissedCount()
+        } else {
+            coreContext.core.missedCallsCount
+        }
         val body: String
         if (missedCallCount > 1) {
             body = context.getString(R.string.notification_missed_calls)
@@ -826,8 +835,8 @@ class NotificationsManager
 
     /**
      * OTT: dismisses the missed call notification, whatever its current
-     * count. Called when the shared calls-seen watermark (see
-     * org.linphone.ott.OttCallsSeen) covers all missed call logs, ie the
+     * count. Called when the location's shared unseen set no longer
+     * contains any missed call (see org.linphone.ott.OttCallsSeen), ie the
      * calls have been seen on another device of the location or on the
      * dashboard.
      */

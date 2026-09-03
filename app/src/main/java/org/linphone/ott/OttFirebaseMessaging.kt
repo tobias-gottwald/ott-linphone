@@ -25,12 +25,14 @@ import org.linphone.core.tools.firebase.FirebaseMessaging
 
 /**
  * OTT flavor of the SDK's Firebase messaging service: handles the shared
- * calls-seen watermark pushes (data messages with reason "calls_seen") and
- * delegates everything else (call pushes) to the SDK implementation exactly
- * as if this class didn't exist.
+ * calls-seen pushes (data messages with reason "calls_seen") and delegates
+ * everything else (call pushes) to the SDK implementation exactly as if
+ * this class didn't exist.
  *
- * Replaces org.linphone.core.tools.firebase.FirebaseMessaging in the
- * manifest; see [OttCallsSeen] for the watermark itself.
+ * A calls-seen push is only a HINT that the server-side unseen set moved:
+ * the payload is never applied as state, the PBX sidecar is re-queried
+ * instead. Replaces org.linphone.core.tools.firebase.FirebaseMessaging in
+ * the manifest; see [OttCallsSeen] for the unseen state itself.
  */
 class OttFirebaseMessaging : FirebaseMessaging() {
 
@@ -38,10 +40,9 @@ class OttFirebaseMessaging : FirebaseMessaging() {
         val data = remoteMessage.data
         if (data[KEY_REASON] == REASON_CALLS_SEEN) {
             val locationId = data[KEY_LOCATION_ID].orEmpty()
-            val seenAt = data[KEY_SEEN_AT]?.toLongOrNull() ?: 0L
-            Log.i("$TAG Received calls-seen push for location [$locationId] with seenAt [$seenAt]")
-            if (locationId.isNotEmpty() && seenAt > 0L) {
-                OttCallsSeen.onWatermark(locationId, seenAt)
+            if (locationId.isNotEmpty()) {
+                Log.i("$TAG Received calls-seen push hint for location [$locationId]")
+                OttCallsSeen.onCallsSeenPush(locationId)
             } else {
                 Log.w("$TAG Calls-seen push is malformed, ignoring it")
             }
@@ -55,7 +56,6 @@ class OttFirebaseMessaging : FirebaseMessaging() {
 
         private const val KEY_REASON = "reason"
         private const val KEY_LOCATION_ID = "locationId"
-        private const val KEY_SEEN_AT = "seenAt"
         private const val REASON_CALLS_SEEN = "calls_seen"
     }
 }

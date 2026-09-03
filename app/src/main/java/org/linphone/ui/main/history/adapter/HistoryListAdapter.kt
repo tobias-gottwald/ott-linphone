@@ -194,9 +194,9 @@ class HistoryListAdapter :
 
                 binding.root.isSelected = bindingAdapterPosition == selectedAdapterPosition
 
-                // OTT: incoming calls newer than the location's shared
-                // calls-seen watermark are shown in bold until the calls
-                // have been seen on any device (or the dashboard).
+                // OTT: incoming calls that are still part of the
+                // location's shared unseen set are shown in bold until the
+                // calls have been seen on any device (or the dashboard).
                 name.setTypeface(
                     Typeface.create(
                         name.typeface,

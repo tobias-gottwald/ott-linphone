@@ -10,7 +10,7 @@
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * but WITHOUT ANY WARRANTY; without even implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
@@ -25,10 +25,13 @@ import android.util.Base64
 import androidx.annotation.AnyThread
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.MutableLiveData
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.core.AuthInfo
+import org.linphone.core.Call
+import org.linphone.core.CallLog
 import org.linphone.core.Core
 import org.linphone.core.GlobalState
 import org.linphone.core.tools.Log
@@ -38,233 +41,408 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Shared per-location "calls seen" watermark.
+ * Shared per-location "unseen calls" state (oc-2532).
  *
- * Every OTT location (Amparex branch) has a single monotonic timestamp stored
- * on the PBX sidecar ({base}/calls/seen, base derived from the [ott]
- * carddav_intern_url configuration value). Whenever any phone of the location
- * marks the calls as seen (opening the history list) or the dashboard does,
- * all devices are notified (FCM data push with reason "calls_seen") so the
- * call history highlighting, the missed calls counter and the missed call
- * notification stay in sync across devices.
+ * Every OTT location (Amparex branch) has a server-side set of call records
+ * that no device has marked as seen yet, served by the PBX sidecar ({base}
+ * derived from the [ott] carddav_intern_url configuration value):
+ * - GET {base}/calls/unseen returns {locationId, unseen[], newestKnownStartAt},
+ * - POST {base}/calls/seen-range marks everything up to the server's "now"
+ *   as seen and returns {locationId, marked}.
  *
- * This object owns the device-local copy of that watermark:
- * - persisted in the [PREFERENCES_NAME] SharedPreferences (seenAt + locationId),
- * - observable through [seenAt] (unix milliseconds, 0 = nothing seen yet),
- * - only ever moving forward: [onWatermark] ignores equal or older values.
+ * Whenever any phone of the location opens its history ("Anrufe" tab) or the
+ * dashboard does, all devices get an FCM data push (reason "calls_seen").
+ * That push is only a HINT to re-GET the state; its payload is never applied
+ * as state (see [onCallsSeenPush]).
  *
- * When a core is running and none of its missed call logs is newer than the
- * watermark, the missed calls counter is reset and the missed call
- * notification dismissed (the calls have been seen somewhere else).
+ * Server call records are matched against the device's call logs by
+ * embedded call id: FreeSWITCH stamps every leg of an OTT call with the SIP
+ * dialog Call-ID "<aLegUuid>_<suffix>@<domain>", where aLegUuid is the PBX
+ * call record id (the value the server reports in unseen[].callId) and the
+ * suffix varies (auth username, extension, group name, ...). The OTT id of
+ * a call log is therefore the substring of its Call-ID before the FIRST '_'
+ * (the uuid never contains '_'); see [ottIdFromCallId]. Call logs whose
+ * Call-ID has no '_' (legacy, pre-embedding ids) are considered seen.
+ *
+ * This object owns the device-local copy of that state:
+ * - persisted in the [PREFERENCES_NAME] SharedPreferences as JSON
+ *   ({locationId, unseen[], newestKnownStartAt}),
+ * - observable through [unseenStateChanged] (fires after every update),
+ * - used to display unseen incoming calls in bold in the history list and
+ *   to compute the missed calls badge / notification count
+ *   ([unseenMissedCount]).
  */
 object OttCallsSeen {
     private const val TAG = "[OTT Calls Seen]"
 
     private const val PREFERENCES_NAME = "ott_calls_seen"
+    private const val PREFERENCE_STATE = "state"
+    // Legacy watermark preferences (pre per-call state, oc-2531 and older);
+    // migrated on first load, see [loadStateFromPreferences].
     private const val PREFERENCE_SEEN_AT = "seenAt"
     private const val PREFERENCE_LOCATION_ID = "locationId"
+
+    private const val JSON_LOCATION_ID = "locationId"
+    private const val JSON_UNSEEN = "unseen"
+    private const val JSON_CALL_ID = "callId"
+    private const val JSON_NEWEST_KNOWN_START_AT = "newestKnownStartAt"
 
     private const val CONFIG_SECTION = "ott"
     private const val CONFIG_INTERN_URL_KEY = "carddav_intern_url"
 
     private const val CARD_DAV_PATH_MARKER = "/carddav/"
-    private const val CALLS_SEEN_PATH = "/calls/seen"
+    private const val CALLS_UNSEEN_PATH = "/calls/unseen"
+    private const val CALLS_SEEN_RANGE_PATH = "/calls/seen-range"
+
+    /**
+     * An OTT id absent from the server's unseen set may belong to a call
+     * newer than the last CDR ingest on the PBX: within this slack window
+     * after newestKnownStartAt the call is still considered unseen (pending
+     * ingest), beyond it the record had time to arrive, so the call is
+     * considered seen.
+     */
+    private const val PENDING_CDR_INGEST_SLACK_MS = 30_000L
 
     private const val CONNECT_TIMEOUT_MS = 10000
     private const val READ_TIMEOUT_MS = 10000
 
     private val lock = Any()
 
-    private var preferencesLoaded = false // Guarded by [lock]
+    private var stateLoaded = false // Guarded by [lock]
 
-    private var seenAtValue = 0L // Guarded by [lock]
-
-    private var locationIdValue: String? = null // Guarded by [lock]
+    private var stateValue = CallsSeenState(null, emptySet(), 0L) // Guarded by [lock]
 
     private var missingConfigurationLogged = false
 
     /**
-     * The shared calls-seen watermark in unix milliseconds (0 = nothing seen
-     * yet). Observers are notified on the main thread whenever it advances;
-     * the history list uses it to display not-yet-seen incoming calls in
-     * bold.
+     * Immutable snapshot of the calls-seen state. [locationId] stays null
+     * until a first server response (or a legacy watermark migration) has
+     * been applied; in that pristine state nothing can be unseen, which
+     * leaves unprovisioned stock behavior untouched.
      */
-    val seenAt: MutableLiveData<Long> by lazy {
-        MutableLiveData(currentSeenAt())
-    }
+    private class CallsSeenState(
+        val locationId: String?,
+        val unseenIds: Set<String>,
+        val newestKnownStartAt: Long
+    )
 
-    @AnyThread
-    fun currentSeenAt(): Long = synchronized(lock) {
-        if (!preferencesLoaded) {
-            preferencesLoaded = true
-            val preferences = preferences()
-            seenAtValue = preferences.getLong(PREFERENCE_SEEN_AT, 0L)
-            locationIdValue = preferences.getString(PREFERENCE_LOCATION_ID, null)
-            Log.i(
-                "$TAG Loaded persisted calls-seen watermark [$seenAtValue] for location [$locationIdValue]"
-            )
-        }
-        seenAtValue
+    /**
+     * Fires after every change of the local unseen-calls state (server GET
+     * response, local clear after marking seen). The value is the
+     * newestKnownStartAt of the new state and must be treated purely as a
+     * "something changed" signal: observers re-read [isUnseenCallLog] /
+     * [unseenMissedCount] instead (oc-3acb keeps the missed calls badge in
+     * sync this way). Rapid successive updates may coalesce, which is fine
+     * for a re-compute trigger.
+     */
+    val unseenStateChanged: MutableLiveData<Long> by lazy {
+        MutableLiveData(snapshotState().newestKnownStartAt)
     }
 
     /**
-     * Applies a (possibly stale) watermark value, typically received through
-     * a FCM push or a server response. Only strictly newer values are
-     * accepted; an accepted value is persisted, observers are notified and
-     * the missed call indicators are re-evaluated. When no core is running
-     * only the persistence happens (the server fetch at next core start
-     * catches the indicators up).
-     */
-    @AnyThread
-    fun onWatermark(locationId: String, newSeenAt: Long) {
-        if (newSeenAt <= 0L) {
-            Log.w("$TAG Ignoring invalid calls-seen watermark [$newSeenAt] for location [$locationId]")
-            return
-        }
-
-        val advanced = synchronized(lock) {
-            if (newSeenAt <= currentSeenAt()) {
-                false
-            } else {
-                seenAtValue = newSeenAt
-                locationIdValue = locationId
-                preferences().edit()
-                    .putLong(PREFERENCE_SEEN_AT, newSeenAt)
-                    .putString(PREFERENCE_LOCATION_ID, locationId)
-                    .apply()
-                true
-            }
-        }
-
-        if (!advanced) {
-            Log.i(
-                "$TAG Calls-seen watermark [$newSeenAt] for location [$locationId] is not newer than local value [${currentSeenAt()}], ignoring it"
-            )
-            return
-        }
-
-        Log.i("$TAG Calls-seen watermark advanced to [$newSeenAt] for location [$locationId]")
-        seenAt.postValue(newSeenAt)
-        maybeClearMissedCallIndicators()
-    }
-
-    /**
-     * Fetches the server-side watermark (GET {base}/calls/seen) in the
-     * background and applies it. Called at core start so a device that was
-     * offline or without a running core when a calls-seen push arrived can
-     * catch up (and clear its missed call indicators).
+     * Fetches the server-side unseen set (GET {base}/calls/unseen) in the
+     * background and replaces the local state with it. Called at core start
+     * and on calls-seen FCM pushes so a device that was offline (or without
+     * a running core) catches up with what other devices or the dashboard
+     * have marked as seen.
      */
     @AnyThread
     fun refreshFromServer() {
-        Log.i("$TAG Refreshing calls-seen watermark from server")
-        runOnHttpThread { target ->
+        Log.i("$TAG Refreshing unseen calls from server")
+        runOnHttpThread(CALLS_UNSEEN_PATH) { target ->
             val body = httpRequest("GET", target) ?: return@runOnHttpThread
             try {
-                val advanced = applyServerWatermark(JSONObject(body))
-                if (!advanced) {
-                    // Even without a local advance, a running core's missed
-                    // call indicators may be covered by the already known
-                    // watermark, for example when the push arrived while no
-                    // core was running.
-                    maybeClearMissedCallIndicators()
-                }
+                applyUnseenResponse(JSONObject(body))
             } catch (e: JSONException) {
-                Log.w("$TAG Failed to parse calls-seen GET response [$body]: ${e.message}")
+                Log.w("$TAG Failed to parse calls-unseen GET response [$body]: ${e.message}")
             }
         }
     }
 
     /**
-     * Notifies the server that this location's calls have been seen (POST
-     * {base}/calls/seen, no body) in the background and applies the effective
-     * watermark returned by the server. Called when the history list is
-     * opened; the applied watermark un-bolds the incoming rows older than it.
+     * Notifies the server that this location's calls have been seen up to
+     * now (POST {base}/calls/seen-range, no body) in the background.
+     * The server stamps its own "now" and the response only acknowledges
+     * ({locationId, marked}), so instead of a second GET round-trip the
+     * local state is optimistically cleared: the unseen set is emptied and
+     * newestKnownStartAt advances to the device's now (never backwards).
+     * A device clock skewing from the server's is acceptable here: this is
+     * a display heuristic and the next GET /calls/unseen replaces the state
+     * wholesale anyway.
      */
     @AnyThread
     fun markCallsSeen() {
         Log.i("$TAG Notifying server that calls have been seen")
-        runOnHttpThread { target ->
+        runOnHttpThread(CALLS_SEEN_RANGE_PATH) { target ->
             val body = httpRequest("POST", target) ?: return@runOnHttpThread
             try {
-                applyServerWatermark(JSONObject(body))
+                val locationId = JSONObject(body).optString(JSON_LOCATION_ID).takeIf { it.isNotEmpty() }
+                val previous = snapshotState()
+                val now = System.currentTimeMillis()
+                setState(
+                    CallsSeenState(
+                        locationId ?: previous.locationId,
+                        emptySet(),
+                        maxOf(now, previous.newestKnownStartAt)
+                    )
+                )
+                unseenStateChanged.postValue(now)
+                maybeClearMissedCallIndicators()
             } catch (e: JSONException) {
-                Log.w("$TAG Failed to parse calls-seen POST response [$body]: ${e.message}")
+                Log.w("$TAG Failed to parse calls-seen-range POST response [$body]: ${e.message}")
             }
         }
     }
 
     /**
-     * Applies the {locationId, seenAt} JSON object returned by the server and
-     * returns whether the local watermark advanced. A null seenAt (no
-     * watermark on the server yet) only logs.
+     * Handles a calls-seen FCM data push. The push is only a HINT that the
+     * server-side state moved (some device or the dashboard marked calls as
+     * seen): its seenAt/locationId payload is NOT applied as state, the
+     * server is simply re-queried.
      */
-    @WorkerThread
-    private fun applyServerWatermark(json: JSONObject): Boolean {
-        val locationId = json.optString("locationId")
-        if (json.isNull("seenAt")) {
-            Log.i("$TAG Server has no calls-seen watermark yet for location [$locationId]")
+    @AnyThread
+    fun onCallsSeenPush(locationId: String) {
+        Log.i("$TAG Calls-seen push for location [$locationId], re-fetching unseen calls from server")
+        refreshFromServer()
+    }
+
+    /**
+     * Whether the given call log hasn't been seen yet on any device of the
+     * location:
+     * - outgoing calls are always seen;
+     * - the log's OTT id being part of the server's unseen set means unseen;
+     * - an OTT id NOT in the set is still considered unseen within
+     *   [PENDING_CDR_INGEST_SLACK_MS] after newestKnownStartAt (the PBX CDR
+     *   ingest may lag behind the call itself); beyond that window the
+     *   record had time to arrive, so the call is seen;
+     * - a Call-ID without '_' (legacy FS-generated ids, no embedded call
+     *   id) is considered seen;
+     * - as long as no server state was ever applied (feature unconfigured
+     *   or not fetched yet) nothing is unseen.
+     */
+    @AnyThread
+    fun isUnseenCallLog(callLog: CallLog): Boolean {
+        if (callLog.dir == Call.Dir.Outgoing) {
             return false
         }
-        val localSeenAt = currentSeenAt()
-        onWatermark(locationId, json.optLong("seenAt", 0L))
-        return currentSeenAt() != localSeenAt
+        return isUnseen(callLog, snapshotState())
+    }
+
+    /**
+     * Number of missed call logs (LinphoneUtils.isCallLogMissed: aborted /
+     * early-aborted included, same definition as the notification trigger)
+     * that are still unseen. Replaces core.missedCallsCount for the badge
+     * and the missed call notification when the feature is configured
+     * ([isConfigured]). Must be called from a thread on which the core can
+     * be accessed.
+     */
+    @WorkerThread
+    fun unseenMissedCount(): Int {
+        if (!coreContext.isCoreAvailable()) {
+            return 0
+        }
+        val state = snapshotState()
+        return coreContext.core.callLogs.count {
+            LinphoneUtils.isCallLogMissed(it) && isUnseen(it, state)
+        }
+    }
+
+    /**
+     * Whether the calls-seen feature is configured: an [ott]
+     * carddav_intern_url value is present from which the PBX sidecar base
+     * URL can be derived. When false (unprovisioned stock setup) callers
+     * keep the stock core.missedCallsCount behavior. Must be called from a
+     * thread on which the core can be accessed.
+     */
+    @WorkerThread
+    fun isConfigured(): Boolean {
+        if (!coreContext.isCoreAvailable()) {
+            return false
+        }
+        return ottBaseUrl(coreContext.core) != null
+    }
+
+    /**
+     * Replaces the local state with a GET /calls/unseen response
+     * {locationId, unseen[{callId, ...}], newestKnownStartAt}. The server
+     * state is authoritative, so it wins over the local one even when it
+     * looks older. [unseenStateChanged] is fired and the missed call
+     * indicators re-evaluated on every response (not only on actual
+     * changes), so a device whose push arrived while no core was running
+     * still catches up.
+     */
+    @WorkerThread
+    private fun applyUnseenResponse(json: JSONObject) {
+        val unseenIds = mutableSetOf<String>()
+        val unseenArray = json.optJSONArray(JSON_UNSEEN)
+        if (unseenArray != null) {
+            for (i in 0 until unseenArray.length()) {
+                val callId = unseenArray.optJSONObject(i)?.optString(JSON_CALL_ID).orEmpty()
+                if (callId.isNotEmpty()) {
+                    unseenIds.add(callId)
+                }
+            }
+        }
+        val newestKnownStartAt = json.optLong(JSON_NEWEST_KNOWN_START_AT, 0L)
+        val locationId = json.optString(JSON_LOCATION_ID).takeIf { it.isNotEmpty() }
+        setState(CallsSeenState(locationId, unseenIds, newestKnownStartAt))
+        Log.i(
+            "$TAG Unseen calls state replaced: [${unseenIds.size}] unseen call(s), newestKnownStartAt [$newestKnownStartAt], location [$locationId]"
+        )
+        unseenStateChanged.postValue(newestKnownStartAt)
+        maybeClearMissedCallIndicators()
+    }
+
+    /**
+     * Freshness check shared by [isUnseenCallLog] and [unseenMissedCount].
+     * [callLog] must be an incoming call log.
+     */
+    private fun isUnseen(callLog: CallLog, state: CallsSeenState): Boolean {
+        if (state.locationId == null) {
+            return false
+        }
+        val ottId = ottIdFromCallId(callLog.callId) ?: return false
+        if (state.unseenIds.contains(ottId)) {
+            return true
+        }
+        return callLog.startDate > state.newestKnownStartAt - PENDING_CDR_INGEST_SLACK_MS
+    }
+
+    /**
+     * Extracts the OTT call id from a SIP dialog Call-ID: FreeSWITCH stamps
+     * every leg of an OTT call with "<aLegUuid>_<suffix>@<domain>", where
+     * aLegUuid is the PBX call record id and the suffix varies (auth
+     * username, extension, group name, ...). The OTT id is the substring
+     * before the FIRST '_' (the uuid never contains '_'). Returns null for
+     * ids without '_' or with an empty id part: legacy FS-generated ids
+     * carry no embedded call id and are treated as seen.
+     */
+    private fun ottIdFromCallId(callId: String?): String? {
+        if (callId.isNullOrEmpty()) {
+            return null
+        }
+        val separatorIndex = callId.indexOf('_')
+        if (separatorIndex <= 0) {
+            return null
+        }
+        return callId.substring(0, separatorIndex)
     }
 
     /**
      * Resets the missed calls counter and dismisses the missed call
-     * notification when a core is running and none of its missed call logs is
-     * newer than the current watermark (they all have been seen, on another
-     * device of the location or on the dashboard). No-op otherwise.
+     * notification when a core is running, at least one missed call log
+     * exists and none of them is unseen anymore (they all have been seen,
+     * on another device of the location or on the dashboard). No-op
+     * otherwise.
      */
     @AnyThread
     private fun maybeClearMissedCallIndicators() {
         if (!coreContext.isCoreAvailable()) {
-            Log.i("$TAG Core not available, calls-seen watermark only persisted")
+            Log.i("$TAG Core not available, unseen calls state only persisted")
             return
         }
         coreContext.postOnCoreThread { core ->
             if (core.globalState != GlobalState.On) {
-                Log.i("$TAG Core isn't running (state [${core.globalState}]), calls-seen watermark only persisted")
+                Log.i("$TAG Core isn't running (state [${core.globalState}]), unseen calls state only persisted")
                 return@postOnCoreThread
             }
 
-            val watermark = currentSeenAt()
-            val newestMissedCallStartDate = core.callLogs
-                // Same definition as the notification trigger (oc-3acb):
-                // Aborted/EarlyAborted missed calls clear together with
-                // status==Missed ones.
-                .filter { LinphoneUtils.isCallLogMissed(it) }
-                .maxOfOrNull { it.startDate }
-            if (newestMissedCallStartDate == null || newestMissedCallStartDate > watermark) {
+            val state = snapshotState()
+            val missedLogs = core.callLogs.filter { LinphoneUtils.isCallLogMissed(it) }
+            val unseenMissed = missedLogs.count { isUnseen(it, state) }
+            if (missedLogs.isEmpty() || unseenMissed > 0) {
                 Log.i(
-                    "$TAG Newest missed call startDate is [$newestMissedCallStartDate], calls-seen watermark is [$watermark], keeping missed calls indicators"
+                    "$TAG [$unseenMissed] of [${missedLogs.size}] missed call(s) still unseen, keeping missed calls indicators"
                 )
                 return@postOnCoreThread
             }
 
-            Log.i(
-                "$TAG Newest missed call startDate [$newestMissedCallStartDate] is covered by calls-seen watermark [$watermark], resetting missed calls count & dismissing notification"
-            )
+            Log.i("$TAG All missed calls have been seen, resetting missed calls count & dismissing notification")
             core.resetMissedCallsCount()
             coreContext.notificationsManager.dismissMissedCallNotification()
         }
     }
 
+    @AnyThread
+    private fun snapshotState(): CallsSeenState = synchronized(lock) {
+        if (!stateLoaded) {
+            stateLoaded = true
+            stateValue = loadStateFromPreferences(preferences())
+            Log.i(
+                "$TAG Loaded persisted unseen calls state: [${stateValue.unseenIds.size}] unseen call(s), newestKnownStartAt [${stateValue.newestKnownStartAt}], location [${stateValue.locationId}]"
+            )
+        }
+        stateValue
+    }
+
+    @AnyThread
+    private fun setState(newState: CallsSeenState) {
+        synchronized(lock) {
+            stateValue = newState
+            val json = JSONObject()
+                .put(JSON_LOCATION_ID, newState.locationId ?: JSONObject.NULL)
+                .put(JSON_NEWEST_KNOWN_START_AT, newState.newestKnownStartAt)
+                .put(JSON_UNSEEN, JSONArray(newState.unseenIds))
+            preferences().edit().putString(PREFERENCE_STATE, json.toString()).apply()
+        }
+    }
+
+    private fun loadStateFromPreferences(preferences: SharedPreferences): CallsSeenState {
+        val stateJson = preferences.getString(PREFERENCE_STATE, null)
+        if (stateJson != null) {
+            try {
+                val json = JSONObject(stateJson)
+                val unseenIds = mutableSetOf<String>()
+                val unseenArray = json.optJSONArray(JSON_UNSEEN)
+                if (unseenArray != null) {
+                    for (i in 0 until unseenArray.length()) {
+                        val callId = unseenArray.optJSONObject(i)?.optString(JSON_CALL_ID).orEmpty()
+                        if (callId.isNotEmpty()) {
+                            unseenIds.add(callId)
+                        }
+                    }
+                }
+                return CallsSeenState(
+                    json.optString(JSON_LOCATION_ID).takeIf { it.isNotEmpty() },
+                    unseenIds,
+                    json.optLong(JSON_NEWEST_KNOWN_START_AT, 0L)
+                )
+            } catch (e: JSONException) {
+                Log.w("$TAG Failed to parse persisted unseen calls state [$stateJson]: ${e.message}, starting fresh")
+            }
+        }
+
+        // Migrate the pre per-call watermark (oc-2531 and older): everything
+        // older than the persisted watermark was seen, everything newer is
+        // classified by the next server GET (which replaces the state
+        // wholesale).
+        val legacySeenAt = preferences.getLong(PREFERENCE_SEEN_AT, 0L)
+        if (legacySeenAt > 0L) {
+            Log.i("$TAG Migrating legacy calls-seen watermark [$legacySeenAt] to unseen calls state")
+            return CallsSeenState(
+                preferences.getString(PREFERENCE_LOCATION_ID, null),
+                emptySet(),
+                legacySeenAt
+            )
+        }
+        return CallsSeenState(null, emptySet(), 0L)
+    }
+
     /**
-     * Resolves the endpoint URL and the basic authorization header on the
-     * core thread (both come from the core configuration and auth infos) then
-     * runs [block] on a short-lived background thread so the caller is never
-     * blocked. Silently gives up when the feature is disabled or credentials
-     * are unavailable.
+     * Resolves the PBX sidecar base URL and the basic authorization header
+     * on the core thread (both come from the core configuration and auth
+     * infos) then runs [block] on a short-lived background thread so the
+     * caller is never blocked. Silently gives up when the feature is
+     * disabled or credentials are unavailable.
      */
     @AnyThread
-    private fun runOnHttpThread(block: (HttpTarget) -> Unit) {
+    private fun runOnHttpThread(path: String, block: (HttpTarget) -> Unit) {
         if (!coreContext.isCoreAvailable()) {
             Log.w("$TAG Core not available, skipping calls-seen HTTP request")
             return
         }
         coreContext.postOnCoreThread { core ->
-            val url = callsSeenUrl(core) ?: return@postOnCoreThread
+            val url = ottBaseUrl(core)?.let { it + path } ?: return@postOnCoreThread
             val authorization = basicAuthorization(core) ?: return@postOnCoreThread
             val target = HttpTarget(url, authorization)
             Thread({ block(target) }, "OTT Calls Seen HTTP").start()
@@ -272,14 +450,14 @@ object OttCallsSeen {
     }
 
     /**
-     * Derives the calls-seen endpoint from the [ott] carddav_intern_url
+     * Derives the PBX sidecar base URL from the [ott] carddav_intern_url
      * configuration value by stripping the /carddav/<ext>/<scope> path
      * suffix: https://pbx.example.com:9443/carddav/42/intern becomes
-     * https://pbx.example.com:9443/calls/seen. When the configuration value
-     * is empty the feature is disabled (logged once per process only).
+     * https://pbx.example.com:9443. When the configuration value is empty
+     * the feature is disabled (logged once per process only).
      */
     @WorkerThread
-    private fun callsSeenUrl(core: Core): String? {
+    private fun ottBaseUrl(core: Core): String? {
         val internUrl = core.config.getString(CONFIG_SECTION, CONFIG_INTERN_URL_KEY, "").orEmpty().trim()
         if (internUrl.isEmpty()) {
             if (!missingConfigurationLogged) {
@@ -297,7 +475,7 @@ object OttCallsSeen {
             )
             return null
         }
-        return internUrl.substring(0, markerIndex) + CALLS_SEEN_PATH
+        return internUrl.substring(0, markerIndex)
     }
 
     /**
@@ -332,7 +510,9 @@ object OttCallsSeen {
 
     /**
      * Performs the HTTP request and returns the response body on HTTP 200,
-     * null otherwise (logged). Must be called from a background thread.
+     * null otherwise (status + error body logged, e.g. the 409
+     * {error:"no-location"} challenge). Must be called from a background
+     * thread.
      */
     @WorkerThread
     private fun httpRequest(method: String, target: HttpTarget): String? {
@@ -347,7 +527,15 @@ object OttCallsSeen {
 
             val statusCode = connection.responseCode
             if (statusCode != HttpURLConnection.HTTP_OK) {
-                Log.w("$TAG $method [${target.url}] failed with HTTP status [$statusCode], giving up")
+                val errorBody = try {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }
+                } catch (e: IOException) {
+                    null
+                }
+                Log.w(
+                    "$TAG $method [${target.url}] failed with HTTP status [$statusCode]" +
+                        (errorBody?.takeIf { it.isNotBlank() }?.let { ", body [$it]" } ?: "")
+                )
                 return null
             }
             return connection.inputStream.bufferedReader().use { it.readText() }

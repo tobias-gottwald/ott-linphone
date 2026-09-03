@@ -32,6 +32,7 @@ import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.GlobalState
 import org.linphone.core.tools.Log
+import org.linphone.ott.OttCallsSeen
 import org.linphone.ui.GenericViewModel
 import org.linphone.ui.main.model.AccountModel
 import org.linphone.utils.Event
@@ -289,9 +290,15 @@ open class AbstractMainViewModel
     @WorkerThread
     fun updateMissedCallsCount() {
         val account = LinphoneUtils.getDefaultAccount()
-        // Fetch all call logs if only one account to workaround no history issue
-        // TODO FIXME: remove workaround later
-        val count = if (coreContext.core.accountList.size > 1) {
+        val count = if (OttCallsSeen.isConfigured()) {
+            // OTT (oc-2532): the badge reflects the location-wide unseen
+            // calls (per-call matching via embedded call ids), not the
+            // local core counter, so it stays in sync with the other
+            // devices of the location.
+            OttCallsSeen.unseenMissedCount()
+        } else if (coreContext.core.accountList.size > 1) {
+            // Fetch all call logs if only one account to workaround no history issue
+            // TODO FIXME: remove workaround later
             account?.missedCallsCount ?: coreContext.core.missedCallsCount
         } else {
             coreContext.core.missedCallsCount

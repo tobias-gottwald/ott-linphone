@@ -265,11 +265,12 @@ class HistoryListFragment : AbstractMainFragment() {
             }
         }
 
-        // OTT: re-bind the rows whenever the shared calls-seen watermark
-        // advances (FCM push from another device or server response) so the
-        // bold "not seen yet" highlighting is updated.
-        OttCallsSeen.seenAt.observe(viewLifecycleOwner) {
-            Log.i("$TAG Calls-seen watermark changed to [$it], re-binding history list")
+        // OTT: re-bind the rows whenever the location's shared unseen-calls
+        // state changes (FCM push hint from another device, server GET
+        // response or local clear after marking seen) so the bold
+        // "not seen yet" highlighting is updated.
+        OttCallsSeen.unseenStateChanged.observe(viewLifecycleOwner) {
+            Log.i("$TAG Unseen calls state changed (newestKnownStartAt [$it]), re-binding history list")
             adapter.notifyDataSetChanged()
         }
 
@@ -330,9 +331,9 @@ class HistoryListFragment : AbstractMainFragment() {
 
         Log.i("$TAG Fragment is resumed, resetting missed calls count")
         sharedViewModel.resetMissedCallsCountEvent.value = Event(true)
-        // OTT: announce to the PBX that this location's calls have been seen;
-        // the watermark returned by the server (re)sets the local one, which
-        // un-bolds the incoming rows older than it.
+        // OTT: announce to the PBX that this location's calls have been
+        // seen; the server marks everything up to its now as seen and the
+        // local optimistic clear un-bolds all rows.
         OttCallsSeen.markCallsSeen()
         sharedViewModel.refreshDrawerMenuAccountsListEvent.value = Event(false)
 

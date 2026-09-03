@@ -141,11 +141,11 @@ abstract class AbstractMainFragment : GenericMainFragment() {
             sharedViewModel.refreshDrawerMenuAccountsListEvent.value = Event(false)
         }
 
-        // Calls-seen watermark moved (FCM push, startup GET or local advance):
-        // OttCallsSeen resets the core counter and dismisses the system
-        // notification, the in-app badge LiveData must be recomputed too
-        // (oc-3acb).
-        OttCallsSeen.seenAt.observe(viewLifecycleOwner) {
+        // Unseen-calls state changed (FCM push hint, server GET response or
+        // local clear after marking seen): OttCallsSeen resets the core
+        // counter and dismisses the system notification, the in-app badge
+        // LiveData must be recomputed too (oc-3acb).
+        OttCallsSeen.unseenStateChanged.observe(viewLifecycleOwner) {
             coreContext.postOnCoreThread {
                 viewModel.updateMissedCallsCount()
             }
