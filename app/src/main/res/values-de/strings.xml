@@ -695,6 +695,7 @@
     <string name="content_description_not_trusted_contact_icon">Kontakt ist nicht vertrauenswürdig!</string>
     <string name="content_description_contact_online">Kontakt ist Online</string>
     <string name="content_description_contact_away">Kontakt ist nicht Online</string>
+    <string name="content_description_contact_this_phone">Eigener Anschluss dieses Telefons</string>
     <string name="content_description_open_drawer_menu_icon">Schubladenmenü öffnen</string>
     <string name="content_description_go_back_icon">Zurück</string>
     <string name="content_description_dismiss_notification">Benachrichtigung schließen</string>

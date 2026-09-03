@@ -38,6 +38,7 @@ import org.linphone.utils.AppUtils
 import org.linphone.utils.TimestampUtils
 import androidx.core.net.toUri
 import org.linphone.LinphoneApplication.Companion.corePreferences
+import org.linphone.utils.LinphoneUtils
 
 class ContactAvatarModel
     @WorkerThread
@@ -55,6 +56,9 @@ class ContactAvatarModel
     val isReadOnly = friend.isReadOnly
 
     val isNative = !friend.nativeUri.isNullOrEmpty()
+
+    // True when this contact holds this phone's own account identity address
+    val isSelf = LinphoneUtils.isOwnAccountFriend(friend)
 
     val isFavourite = MutableLiveData<Boolean>()
 

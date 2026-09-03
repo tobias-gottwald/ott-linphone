@@ -45,6 +45,10 @@ class ConversationContactOrSuggestionModel
 
     val starred = friend?.starred == true
 
+    // True when this entry is this phone's own account identity (own contact)
+    val isSelf = (friend != null && LinphoneUtils.isOwnAccountFriend(friend)) ||
+        LinphoneUtils.isOwnAccountAddress(address)
+
     val name = conversationSubject
         ?: if (friend != null) {
             friend.name ?: LinphoneUtils.getDisplayName(address)

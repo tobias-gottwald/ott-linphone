@@ -93,6 +93,17 @@ class LinphoneUtils {
         }
 
         @WorkerThread
+        fun isOwnAccountAddress(address: Address): Boolean {
+            val identity = getDefaultAccount()?.params?.identityAddress ?: return false
+            return identity.weakEqual(address)
+        }
+
+        @WorkerThread
+        fun isOwnAccountFriend(friend: Friend): Boolean {
+            return friend.addresses.any { isOwnAccountAddress(it) }
+        }
+
+        @WorkerThread
         fun getAccountForAddress(address: Address): Account? {
             return coreContext.core.accountList.find {
                 it.params.identityAddress?.weakEqual(address) == true

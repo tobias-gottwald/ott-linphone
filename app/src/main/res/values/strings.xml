@@ -971,6 +971,7 @@
     <string name="content_description_not_trusted_contact_icon">Contact is not trusted!</string>
     <string name="content_description_contact_online">Contact is online</string>
     <string name="content_description_contact_away">Contact is not online</string>
+    <string name="content_description_contact_this_phone">This phone\'s own contact</string>
     <string name="content_description_open_drawer_menu_icon">Open drawer menu</string>
     <string name="content_description_go_back_icon">Go back</string>
     <string name="content_description_dismiss_notification">Dismiss notification</string>

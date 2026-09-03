@@ -60,16 +60,31 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="6dp"
             android:text="@{model.name, default=`John Doe`}"
             android:textSize="14sp"
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="?attr/color_main2_800"
             app:layout_constraintStart_toEndOf="@id/avatar"
-            app:layout_constraintEnd_toStartOf="@id/selected"
+            app:layout_constraintEnd_toStartOf="@id/self_badge"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <ImageView
+            android:id="@+id/self_badge"
+            android:layout_width="@dimen/small_icon_size"
+            android:layout_height="@dimen/small_icon_size"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@string/content_description_contact_this_phone"
+            android:src="@drawable/person_pin_circle"
+            android:visibility="@{model.isSelf ? View.VISIBLE : View.GONE, default=gone}"
+            app:layout_constraintHorizontal_bias="0"
+            app:layout_constraintStart_toEndOf="@id/name"
+            app:layout_constraintEnd_toStartOf="@id/selected"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:tint="?attr/color_main1_500" />
 
         <ImageView
             android:id="@+id/selected"
