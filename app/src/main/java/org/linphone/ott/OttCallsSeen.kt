@@ -77,10 +77,6 @@ object OttCallsSeen {
 
     private const val PREFERENCES_NAME = "ott_calls_seen"
     private const val PREFERENCE_STATE = "state"
-    // Legacy watermark preferences (pre per-call state, oc-2531 and older);
-    // migrated on first load, see [loadStateFromPreferences].
-    private const val PREFERENCE_SEEN_AT = "seenAt"
-    private const val PREFERENCE_LOCATION_ID = "locationId"
 
     private const val JSON_LOCATION_ID = "locationId"
     private const val JSON_UNSEEN = "unseen"
@@ -116,8 +112,8 @@ object OttCallsSeen {
 
     /**
      * Immutable snapshot of the calls-seen state. [locationId] stays null
-     * until a first server response (or a legacy watermark migration) has
-     * been applied; in that pristine state nothing can be unseen, which
+     * until a first server response has been applied; in that pristine
+     * state nothing can be unseen, which
      * leaves unprovisioned stock behavior untouched.
      */
     private class CallsSeenState(
@@ -412,19 +408,6 @@ object OttCallsSeen {
             }
         }
 
-        // Migrate the pre per-call watermark (oc-2531 and older): everything
-        // older than the persisted watermark was seen, everything newer is
-        // classified by the next server GET (which replaces the state
-        // wholesale).
-        val legacySeenAt = preferences.getLong(PREFERENCE_SEEN_AT, 0L)
-        if (legacySeenAt > 0L) {
-            Log.i("$TAG Migrating legacy calls-seen watermark [$legacySeenAt] to unseen calls state")
-            return CallsSeenState(
-                preferences.getString(PREFERENCE_LOCATION_ID, null),
-                emptySet(),
-                legacySeenAt
-            )
-        }
         return CallsSeenState(null, emptySet(), 0L)
     }
 

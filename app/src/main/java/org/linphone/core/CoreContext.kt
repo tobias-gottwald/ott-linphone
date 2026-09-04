@@ -307,8 +307,8 @@ class CoreContext
                 Log.i("$TAG Remote provisioning applied, starting OTT CardDAV provisioning")
                 OttCardDavProvisioning.apply(core)
                 // OTT: [ott] configuration may have just been (re)applied,
-                // refresh the shared calls-seen watermark (no-op when the
-                // feature is disabled or the watermark didn't change).
+                // refresh the per-call unseen state (no-op when the
+                // feature is disabled).
                 OttCallsSeen.refreshFromServer()
                 provisioningAppliedEvent.postValue(Event(true))
                 corePreferences.firstLaunch = false
@@ -821,7 +821,7 @@ class CoreContext
         telecomManager.onCoreStarted(core)
         notificationsManager.onCoreStarted(core, oldVersion < 600000) // Re-create channels when migrating from a non 6.0 version
         Log.i("$TAG Started contacts, telecom & notifications managers")
-        // OTT: fetch the shared calls-seen watermark in the background so
+        // OTT: fetch the per-call unseen state in the background so
         // this device catches up with what was seen on the other devices of
         // the location while it was offline or without a running core.
         OttCallsSeen.refreshFromServer()
