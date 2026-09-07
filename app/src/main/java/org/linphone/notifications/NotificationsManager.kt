@@ -783,11 +783,24 @@ class NotificationsManager
         // OTT (oc-2532): when the calls-seen feature is configured the
         // count is the location-wide unseen one (per-call matching via
         // embedded call ids, same source as the in-app badge); stock
-        // devices keep the core counter.
-        val missedCallCount: Int = if (OttCallsSeen.isConfigured()) {
+        // devices keep the core counter. A configured device whose first
+        // unseen fetch hasn't completed yet (not ready) also keeps the
+        // stock counter — an empty unseen set is only meaningful once the
+        // server state was actually applied.
+        val configured = OttCallsSeen.isConfigured()
+        val ready = configured && OttCallsSeen.isReady()
+        val missedCallCount: Int = if (ready) {
             OttCallsSeen.unseenMissedCount()
         } else {
             coreContext.core.missedCallsCount
+        }
+        if (ready && missedCallCount <= 0) {
+            // OTT (oc-bc3a): the just-ended call is already seen on
+            // another device of the location (or the dashboard) — posting
+            // a notification for it would show a missed call nobody can
+            // clear except by opening this app, so skip it entirely.
+            Log.i("$TAG Every missed call has already been seen elsewhere, skipping missed call notification")
+            return
         }
         val body: String
         if (missedCallCount > 1) {

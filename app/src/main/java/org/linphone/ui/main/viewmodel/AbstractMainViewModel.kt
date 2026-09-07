@@ -290,11 +290,14 @@ open class AbstractMainViewModel
     @WorkerThread
     fun updateMissedCallsCount() {
         val account = LinphoneUtils.getDefaultAccount()
-        val count = if (OttCallsSeen.isConfigured()) {
+        val count = if (OttCallsSeen.isConfigured() && OttCallsSeen.isReady()) {
             // OTT (oc-2532): the badge reflects the location-wide unseen
             // calls (per-call matching via embedded call ids), not the
             // local core counter, so it stays in sync with the other
-            // devices of the location.
+            // devices of the location. A configured device whose first
+            // unseen fetch hasn't completed yet falls back to the core
+            // counter — an empty unseen set is only meaningful once the
+            // server state was actually applied (oc-bc3a).
             OttCallsSeen.unseenMissedCount()
         } else if (coreContext.core.accountList.size > 1) {
             // Fetch all call logs if only one account to workaround no history issue

@@ -29,7 +29,6 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.linphone.LinphoneApplication.Companion.coreContext
-import org.linphone.core.AuthInfo
 import org.linphone.core.Call
 import org.linphone.core.CallLog
 import org.linphone.core.Core
@@ -41,14 +40,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Shared per-location "unseen calls" state (oc-2532).
+ * Shared per-location "unseen calls" state (oc-2532, per-call oc-28fd,
+ * carddav identity + core-less refresh oc-bc3a).
  *
  * Every OTT location (Amparex branch) has a server-side set of call records
  * that no device has marked as seen yet, served by the PBX sidecar ({base}
  * derived from the [ott] carddav_intern_url configuration value):
  * - GET {base}/calls/unseen returns {locationId, unseen[], newestKnownStartAt},
- * - POST {base}/calls/seen-range marks everything up to the server's "now"
- *   as seen and returns {locationId, marked}.
+ * - POST {base}/calls/seen marks exactly the listed OTT call ids as seen
+ *   (the ids this device's call log actually showed the user) and returns
+ *   {locationId, marked}.
  *
  * Whenever any phone of the location opens its history ("Anrufe" tab) or the
  * dashboard does, all devices get an FCM data push (reason "calls_seen").
@@ -64,6 +65,17 @@ import java.net.URL
  * (the uuid never contains '_'); see [ottIdFromCallId]. Call logs whose
  * Call-ID has no '_' (legacy, pre-embedding ids) are considered seen.
  *
+ * Authentication uses the CardDAV identity from the [ott] configuration
+ * section (carddav_username + carddav_password, i.e. `<ext>@carddav` and
+ * the org-wide contacts secret) — NOT the SIP credentials: liblinphone
+ * converts auth infos to HA1 on config write-back (store_ha1_passwd), so
+ * the SIP password is unreadable after the first provisioning apply and can
+ * never serve as HTTP Basic auth. The carddav entries are plain config
+ * strings and stay cleartext; they are mirrored into the shared preferences
+ * so calls-seen requests also work when the push arrived while no core was
+ * running (the missed call notification is dismissed directly through the
+ * NotificationManager in that case — cancelling needs no core).
+ *
  * This object owns the device-local copy of that state:
  * - persisted in the [PREFERENCES_NAME] SharedPreferences as JSON
  *   ({locationId, unseen[], newestKnownStartAt}),
@@ -78,17 +90,30 @@ object OttCallsSeen {
     private const val PREFERENCES_NAME = "ott_calls_seen"
     private const val PREFERENCE_STATE = "state"
 
+    // Legacy oc-2532 watermark keys this preferences file used to carry;
+    // removed once on first load (oc-bc3a).
+    private const val LEGACY_PREFERENCE_SEEN_AT = "seenAt"
+    private const val LEGACY_PREFERENCE_LOCATION_ID = "locationId"
+
+    // Mirror of the last resolved sidecar endpoint + carddav identity, so
+    // a calls-seen FCM push can be served without a running core.
+    private const val PREFERENCE_MIRROR_BASE_URL = "mirror_base_url"
+    private const val PREFERENCE_MIRROR_AUTHORIZATION = "mirror_authorization"
+
     private const val JSON_LOCATION_ID = "locationId"
     private const val JSON_UNSEEN = "unseen"
     private const val JSON_CALL_ID = "callId"
     private const val JSON_NEWEST_KNOWN_START_AT = "newestKnownStartAt"
+    private const val JSON_CALL_IDS = "callIds"
 
     private const val CONFIG_SECTION = "ott"
     private const val CONFIG_INTERN_URL_KEY = "carddav_intern_url"
+    private const val CONFIG_CARDDAV_USERNAME_KEY = "carddav_username"
+    private const val CONFIG_CARDDAV_PASSWORD_KEY = "carddav_password"
 
     private const val CARD_DAV_PATH_MARKER = "/carddav/"
     private const val CALLS_UNSEEN_PATH = "/calls/unseen"
-    private const val CALLS_SEEN_RANGE_PATH = "/calls/seen-range"
+    private const val CALLS_SEEN_PATH = "/calls/seen"
 
     /**
      * An OTT id absent from the server's unseen set may belong to a call
@@ -140,7 +165,9 @@ object OttCallsSeen {
      * background and replaces the local state with it. Called at core start
      * and on calls-seen FCM pushes so a device that was offline (or without
      * a running core) catches up with what other devices or the dashboard
-     * have marked as seen.
+     * have marked as seen. Works without a running core through the
+     * persisted endpoint mirror (no mirror yet — feature never configured
+     * with a core — means the request is skipped).
      */
     @AnyThread
     fun refreshFromServer() {
@@ -156,37 +183,38 @@ object OttCallsSeen {
     }
 
     /**
-     * Notifies the server that this location's calls have been seen up to
-     * now (POST {base}/calls/seen-range, no body) in the background.
-     * The server stamps its own "now" and the response only acknowledges
-     * ({locationId, marked}), so instead of a second GET round-trip the
-     * local state is optimistically cleared: the unseen set is emptied and
-     * newestKnownStartAt advances to the device's now (never backwards).
-     * A device clock skewing from the server's is acceptable here: this is
-     * a display heuristic and the next GET /calls/unseen replaces the state
-     * wholesale anyway.
+     * Notifies the server that this device's user just looked at the calls
+     * their call log shows (POST {base}/calls/seen with the exact OTT call
+     * ids) in the background. Per-call, never a range: unseen calls this
+     * device's log doesn't show stay unseen for the location. On the 200
+     * response exactly the sent ids are removed from the local state (the
+     * server stamps its own now) and the missed call indicators are
+     * re-evaluated. Requires a running core — only it can enumerate the
+     * device's call logs.
      */
     @AnyThread
     fun markCallsSeen() {
-        Log.i("$TAG Notifying server that calls have been seen")
-        runOnHttpThread(CALLS_SEEN_RANGE_PATH) { target ->
-            val body = httpRequest("POST", target) ?: return@runOnHttpThread
-            try {
-                val locationId = JSONObject(body).optString(JSON_LOCATION_ID).takeIf { it.isNotEmpty() }
-                val previous = snapshotState()
-                val now = System.currentTimeMillis()
-                setState(
-                    CallsSeenState(
-                        locationId ?: previous.locationId,
-                        emptySet(),
-                        maxOf(now, previous.newestKnownStartAt)
-                    )
-                )
-                unseenStateChanged.postValue(now)
-                maybeClearMissedCallIndicators()
-            } catch (e: JSONException) {
-                Log.w("$TAG Failed to parse calls-seen-range POST response [$body]: ${e.message}")
+        if (!coreContext.isCoreAvailable()) {
+            Log.w("$TAG Core not available, cannot compute the seen call ids")
+            return
+        }
+        coreContext.postOnCoreThread { core ->
+            val state = snapshotState()
+            if (state.locationId == null) {
+                Log.i("$TAG No server unseen state applied yet, nothing to mark as seen")
+                return@postOnCoreThread
             }
+            val seenIds = core.callLogs
+                .filter { it.dir != Call.Dir.Outgoing }
+                .mapNotNull { callLog -> ottIdFromCallId(callLog.callId) }
+                .filter { state.unseenIds.contains(it) }
+                .distinct()
+            if (seenIds.isEmpty()) {
+                Log.i("$TAG None of this device's calls is unseen, nothing to mark as seen")
+                return@postOnCoreThread
+            }
+            val target = resolveHttpTarget(core, CALLS_SEEN_PATH) ?: return@postOnCoreThread
+            Thread({ postSeenCallIds(target, seenIds, state) }, "OTT Calls Seen HTTP").start()
         }
     }
 
@@ -244,18 +272,33 @@ object OttCallsSeen {
     }
 
     /**
-     * Whether the calls-seen feature is configured: an [ott]
-     * carddav_intern_url value is present from which the PBX sidecar base
-     * URL can be derived. When false (unprovisioned stock setup) callers
-     * keep the stock core.missedCallsCount behavior. Must be called from a
-     * thread on which the core can be accessed.
+     * Whether the calls-seen feature is configured: the [ott]
+     * carddav_intern_url value (sidecar base URL) AND the carddav
+     * credentials ([ott] carddav_username/carddav_password — the identity
+     * the sidecar's /calls routes authenticate, see class doc). When false
+     * (unprovisioned stock setup, or anonymous dev mode without a contacts
+     * secret) callers keep the stock core.missedCallsCount behavior. Must
+     * be called from a thread on which the core can be accessed.
      */
     @WorkerThread
     fun isConfigured(): Boolean {
         if (!coreContext.isCoreAvailable()) {
             return false
         }
-        return ottBaseUrl(coreContext.core) != null
+        val core = coreContext.core
+        return ottBaseUrl(core) != null && carddavCredentials(core) != null
+    }
+
+    /**
+     * Whether a server unseen state has been applied at least once
+     * ([CallsSeenState.locationId] non-null). Distinct from
+     * [isConfigured]: a configured device whose first fetch hasn't
+     * completed yet is not ready, and callers must fall back to stock
+     * counters instead of trusting an empty unseen set.
+     */
+    @AnyThread
+    fun isReady(): Boolean {
+        return snapshotState().locationId != null
     }
 
     /**
@@ -267,7 +310,7 @@ object OttCallsSeen {
      * changes), so a device whose push arrived while no core was running
      * still catches up.
      */
-    @WorkerThread
+    @AnyThread
     private fun applyUnseenResponse(json: JSONObject) {
         val unseenIds = mutableSetOf<String>()
         val unseenArray = json.optJSONArray(JSON_UNSEEN)
@@ -287,6 +330,30 @@ object OttCallsSeen {
         )
         unseenStateChanged.postValue(newestKnownStartAt)
         maybeClearMissedCallIndicators()
+    }
+
+    /**
+     * POSTs the seen OTT call ids and removes exactly them from the local
+     * state on the 200 response. Must be called from a background thread.
+     */
+    @WorkerThread
+    private fun postSeenCallIds(target: HttpTarget, seenIds: List<String>, previous: CallsSeenState) {
+        val body = JSONObject().put(JSON_CALL_IDS, JSONArray(seenIds)).toString()
+        val response = httpRequest("POST", target, body) ?: return
+        try {
+            val marked = JSONObject(response).optInt("marked", 0)
+            Log.i("$TAG Server marked [$marked] of [${seenIds.size}] reported call(s) as seen")
+            val newState = CallsSeenState(
+                previous.locationId,
+                previous.unseenIds - seenIds.toSet(),
+                previous.newestKnownStartAt
+            )
+            setState(newState)
+            unseenStateChanged.postValue(newState.newestKnownStartAt)
+            maybeClearMissedCallIndicators()
+        } catch (e: JSONException) {
+            Log.w("$TAG Failed to parse calls-seen POST response [$response]: ${e.message}")
+        }
     }
 
     /**
@@ -328,18 +395,22 @@ object OttCallsSeen {
      * Resets the missed calls counter and dismisses the missed call
      * notification when a core is running, at least one missed call log
      * exists and none of them is unseen anymore (they all have been seen,
-     * on another device of the location or on the dashboard). No-op
-     * otherwise.
+     * on another device of the location or on the dashboard). Without a
+     * running core there are no call logs to check — an EMPTY unseen set
+     * still proves every call seen, so the notification is dismissed
+     * directly (cancelling needs no core); a non-empty set keeps it until
+     * the next core start re-evaluates precisely.
      */
     @AnyThread
     private fun maybeClearMissedCallIndicators() {
         if (!coreContext.isCoreAvailable()) {
-            Log.i("$TAG Core not available, unseen calls state only persisted")
+            maybeClearMissedCallIndicatorsWithoutCore()
             return
         }
         coreContext.postOnCoreThread { core ->
             if (core.globalState != GlobalState.On) {
                 Log.i("$TAG Core isn't running (state [${core.globalState}]), unseen calls state only persisted")
+                maybeClearMissedCallIndicatorsWithoutCore()
                 return@postOnCoreThread
             }
 
@@ -359,11 +430,36 @@ object OttCallsSeen {
         }
     }
 
+    /**
+     * Core-less variant of [maybeClearMissedCallIndicators]: call logs are
+     * unavailable, so only the empty-unseen-set case is decidable.
+     */
+    @AnyThread
+    private fun maybeClearMissedCallIndicatorsWithoutCore() {
+        val state = snapshotState()
+        if (state.locationId == null) {
+            return
+        }
+        if (state.unseenIds.isEmpty()) {
+            Log.i("$TAG No core but every call has been seen, dismissing missed call notification")
+            coreContext.notificationsManager.dismissMissedCallNotification()
+        } else {
+            Log.i("$TAG No core and [${state.unseenIds.size}] unseen call(s), keeping missed calls indicators")
+        }
+    }
+
     @AnyThread
     private fun snapshotState(): CallsSeenState = synchronized(lock) {
         if (!stateLoaded) {
             stateLoaded = true
             stateValue = loadStateFromPreferences(preferences())
+            // One-time cleanup of the oc-2532 watermark format that used to
+            // live in this file (oc-bc3a): the per-call state lives under
+            // PREFERENCE_STATE and the stale keys only confuse readers.
+            preferences().edit()
+                .remove(LEGACY_PREFERENCE_SEEN_AT)
+                .remove(LEGACY_PREFERENCE_LOCATION_ID)
+                .apply()
             Log.i(
                 "$TAG Loaded persisted unseen calls state: [${stateValue.unseenIds.size}] unseen call(s), newestKnownStartAt [${stateValue.newestKnownStartAt}], location [${stateValue.locationId}]"
             )
@@ -412,22 +508,53 @@ object OttCallsSeen {
     }
 
     /**
-     * Resolves the PBX sidecar base URL and the basic authorization header
-     * on the core thread (both come from the core configuration and auth
-     * infos) then runs [block] on a short-lived background thread so the
-     * caller is never blocked. Silently gives up when the feature is
-     * disabled or credentials are unavailable.
+     * Derives the full request target from the core configuration and
+     * refreshes the core-less mirror. Must be called from the core thread.
+     */
+    @WorkerThread
+    private fun resolveHttpTarget(core: Core, path: String): HttpTarget? {
+        val baseUrl = ottBaseUrl(core) ?: return null
+        val credentials = carddavCredentials(core) ?: return null
+        preferences().edit()
+            .putString(PREFERENCE_MIRROR_BASE_URL, baseUrl)
+            .putString(PREFERENCE_MIRROR_AUTHORIZATION, credentials.authorization)
+            .apply()
+        return HttpTarget(baseUrl + path, credentials.authorization)
+    }
+
+    /**
+     * Rebuilds the request target from the persisted mirror for core-less
+     * operation. Null when no core-thread resolve ever persisted one.
+     */
+    @AnyThread
+    private fun mirroredTarget(path: String): HttpTarget? {
+        val prefs = preferences()
+        val baseUrl = prefs.getString(PREFERENCE_MIRROR_BASE_URL, null) ?: return null
+        val authorization = prefs.getString(PREFERENCE_MIRROR_AUTHORIZATION, null) ?: return null
+        return HttpTarget(baseUrl + path, authorization)
+    }
+
+    /**
+     * Resolves the PBX sidecar endpoint (base URL + carddav Basic identity)
+     * on the core thread, refreshes the core-less mirror, then runs [block]
+     * on a short-lived background thread so the caller is never blocked.
+     * Without a core the persisted mirror serves the same purpose (an FCM
+     * push may wake the process with no core running). Silently gives up
+     * when the feature is disabled or the mirror is absent.
      */
     @AnyThread
     private fun runOnHttpThread(path: String, block: (HttpTarget) -> Unit) {
-        if (!coreContext.isCoreAvailable()) {
-            Log.w("$TAG Core not available, skipping calls-seen HTTP request")
-            return
-        }
-        coreContext.postOnCoreThread { core ->
-            val url = ottBaseUrl(core)?.let { it + path } ?: return@postOnCoreThread
-            val authorization = basicAuthorization(core) ?: return@postOnCoreThread
-            val target = HttpTarget(url, authorization)
+        if (coreContext.isCoreAvailable()) {
+            coreContext.postOnCoreThread { core ->
+                val target = resolveHttpTarget(core, path) ?: return@postOnCoreThread
+                Thread({ block(target) }, "OTT Calls Seen HTTP").start()
+            }
+        } else {
+            val target = mirroredTarget(path)
+            if (target == null) {
+                Log.w("$TAG Core not available and no endpoint mirror persisted, skipping calls-seen HTTP request")
+                return
+            }
             Thread({ block(target) }, "OTT Calls Seen HTTP").start()
         }
     }
@@ -462,33 +589,32 @@ object OttCallsSeen {
     }
 
     /**
-     * Builds the HTTP basic authorization header from the device SIP
-     * credentials, read at request time: the auth info matching the default
-     * account's username when it can be found, the first complete auth info
-     * as a fallback.
+     * The CardDAV identity for the calls-seen Basic auth: [ott]
+     * carddav_username (the sidecar's `<ext>@carddav` login) and
+     * carddav_password (the org-wide contacts secret). Read from the raw
+     * config entries, never from an AuthInfo object — liblinphone
+     * ha1-ifies auth infos on config write-back, config entries stay
+     * cleartext. Anonymous dev setups (no carddav_password entry) disable
+     * the feature. Must be called from the core thread.
      */
     @WorkerThread
-    private fun basicAuthorization(core: Core): String? {
-        var authInfo: AuthInfo? = null
-        val username = core.defaultAccount?.params?.identityAddress?.username
-        if (!username.isNullOrEmpty()) {
-            authInfo = core.findAuthInfo(null, username, null)
-        }
-        if (authInfo == null) {
-            authInfo = core.authInfoList.firstOrNull { !it.username.isNullOrEmpty() && !it.password.isNullOrEmpty() }
-        }
-        if (authInfo == null) {
-            Log.w("$TAG No auth info with username & password found, cannot build calls-seen authorization")
+    private fun carddavCredentials(core: Core): Credentials? {
+        val username = core.config.getString(CONFIG_SECTION, CONFIG_CARDDAV_USERNAME_KEY, "").orEmpty().trim()
+        val password = core.config.getString(CONFIG_SECTION, CONFIG_CARDDAV_PASSWORD_KEY, "").orEmpty().trim()
+        if (username.isEmpty() || password.isEmpty()) {
+            if (!missingConfigurationLogged) {
+                missingConfigurationLogged = true
+                Log.i(
+                    "$TAG No [$CONFIG_SECTION] carddav credentials in configuration, calls-seen feature disabled"
+                )
+            }
             return null
         }
-        val authUsername = authInfo.username
-        val authPassword = authInfo.password
-        if (authUsername.isNullOrEmpty() || authPassword.isNullOrEmpty()) {
-            Log.w("$TAG Auth info for username [$authUsername] has no password, cannot build calls-seen authorization")
-            return null
-        }
-        val credentials = Base64.encodeToString("$authUsername:$authPassword".toByteArray(), Base64.NO_WRAP)
-        return "Basic $credentials"
+        return Credentials(username, basicAuthorization(username, password))
+    }
+
+    private fun basicAuthorization(username: String, password: String): String {
+        return "Basic " + Base64.encodeToString("$username:$password".toByteArray(), Base64.NO_WRAP)
     }
 
     /**
@@ -498,7 +624,7 @@ object OttCallsSeen {
      * thread.
      */
     @WorkerThread
-    private fun httpRequest(method: String, target: HttpTarget): String? {
+    private fun httpRequest(method: String, target: HttpTarget, body: String? = null): String? {
         var connection: HttpURLConnection? = null
         try {
             connection = URL(target.url).openConnection() as HttpURLConnection
@@ -507,6 +633,11 @@ object OttCallsSeen {
             connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Authorization", target.authorization)
             connection.setRequestProperty("Accept", "application/json")
+            if (body != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            }
 
             val statusCode = connection.responseCode
             if (statusCode != HttpURLConnection.HTTP_OK) {
@@ -534,6 +665,8 @@ object OttCallsSeen {
     private fun preferences(): SharedPreferences {
         return coreContext.context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     }
+
+    private class Credentials(val username: String, val authorization: String)
 
     private class HttpTarget(val url: String, val authorization: String)
 }
