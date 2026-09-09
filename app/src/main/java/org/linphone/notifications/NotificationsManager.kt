@@ -120,6 +120,14 @@ class NotificationsManager
         private const val IN_CALL_FOREGROUND_SERVICE_ERROR_ID = 8
         private const val MISSED_CALL_ID = 10
         private const val CALL_REDIRECTION_ID = 20
+
+        /**
+         * Delay after posting a missed-call notification before the unseen
+         * state is re-fetched (see showMissedCallNotification): comfortably
+         * above the phone's PENDING_CDR_INGEST_SLACK (30s) so the call's
+         * CDR has landed and answered-elsewhere calls resolve to seen.
+         */
+        private const val MISSED_CALL_CONVERGENCE_REFRESH_MS = 45_000L
     }
 
     private var currentInCallServiceNotificationId = -1
@@ -844,6 +852,16 @@ class NotificationsManager
 
         val notification = builder.build()
         notify(MISSED_CALL_ID, notification, MISSED_CALL_TAG)
+
+        if (configured) {
+            // OTT (oc-bc3a): the posted count came from the location-wide
+            // unseen state, which counts calls whose CDR hasn't reached the
+            // PBX yet. Calls answered on another device of the location are
+            // seen at ingestion and never enter the unseen summary, so no
+            // calls-seen push will fire for them — this delayed re-fetch is
+            // what dismisses the notification once the record has landed.
+            OttCallsSeen.scheduleRefreshFromServer(MISSED_CALL_CONVERGENCE_REFRESH_MS)
+        }
     }
 
     /**

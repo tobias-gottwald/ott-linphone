@@ -21,6 +21,8 @@ package org.linphone.ott
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import androidx.annotation.AnyThread
 import androidx.annotation.WorkerThread
@@ -129,11 +131,18 @@ object OttCallsSeen {
 
     private val lock = Any()
 
+    private val refreshSchedulerLock = Any()
+
     private var stateLoaded = false // Guarded by [lock]
 
     private var stateValue = CallsSeenState(null, emptySet(), 0L) // Guarded by [lock]
 
     private var missingConfigurationLogged = false
+
+    /** Runs the delayed convergence refreshes (see [scheduleRefreshFromServer]). */
+    private val refreshHandler = Handler(Looper.getMainLooper())
+
+    private var convergenceRefreshPending = false // Guarded by [refreshSchedulerLock]
 
     /**
      * Immutable snapshot of the calls-seen state. [locationId] stays null
@@ -158,6 +167,34 @@ object OttCallsSeen {
      */
     val unseenStateChanged: MutableLiveData<Long> by lazy {
         MutableLiveData(snapshotState().newestKnownStartAt)
+    }
+
+    /**
+     * Schedules a delayed convergence refresh: a missed-call notification
+     * was just posted while the CDR of that call may still be travelling to
+     * the PBX (the ingest-lag heuristic intentionally counts such calls as
+     * unseen). When the record lands, calls answered on another device of
+     * the location are seen at ingestion and NEVER enter the unseen
+     * summary — so no calls-seen push will ever fire for them. This
+     * scheduled re-fetch is what converges the posted notification: it
+     * re-evaluates the missed-call indicators against fresh server state
+     * and dismisses the notification when every missed call turns out seen
+     * (see [maybeClearMissedCallIndicators]). No-op while a refresh is
+     * already pending: every state change re-evaluates the indicators
+     * anyway, one in-flight convergence is enough.
+     */
+    @AnyThread
+    fun scheduleRefreshFromServer(delayMs: Long) {
+        synchronized(refreshSchedulerLock) {
+            if (convergenceRefreshPending) return
+            convergenceRefreshPending = true
+        }
+        refreshHandler.postDelayed({
+            synchronized(refreshSchedulerLock) {
+                convergenceRefreshPending = false
+            }
+            refreshFromServer()
+        }, delayMs)
     }
 
     /**

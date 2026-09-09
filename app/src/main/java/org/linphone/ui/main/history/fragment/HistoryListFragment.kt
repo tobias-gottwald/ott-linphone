@@ -335,7 +335,11 @@ class HistoryListFragment : AbstractMainFragment() {
         // seen; the server marks everything up to its now as seen and the
         // local optimistic clear un-bolds all rows.
         OttCallsSeen.markCallsSeen()
-        sharedViewModel.refreshDrawerMenuAccountsListEvent.value = Event(false)
+        // OTT (oc-bc3a): also re-fetch the unseen state — opening the
+        // history is a natural convergence point for a notification whose
+        // call was answered on another device (those never trigger a
+        // calls-seen push because they were never unseen server-side).
+        OttCallsSeen.refreshFromServer()
 
         if (shouldRefreshDataInOnResume()) {
             Log.i("$TAG Keep app alive setting is enabled, refreshing view just in case")
