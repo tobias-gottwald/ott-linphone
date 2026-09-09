@@ -137,6 +137,16 @@ object OttCallsSeen {
 
     private var stateValue = CallsSeenState(null, emptySet(), 0L) // Guarded by [lock]
 
+    /**
+     * OTT ids kept BOLD in the history list for the current viewing session
+     * (oc-bc3a): the ids the user just marked as seen by opening the Anrufe
+     * tab. Rendering-only — the badge, the notification dismissal and every
+     * other consumer keep following the real state. Cleared by
+     * [endUnseenRenderingSession] when the user leaves the history, so the
+     * NEXT visit renders the rows un-bold.
+     */
+    private var frozenUnseenIds: Set<String> = emptySet() // Guarded by [lock]
+
     private var missingConfigurationLogged = false
 
     /** Runs the delayed convergence refreshes (see [scheduleRefreshFromServer]). */
@@ -250,6 +260,14 @@ object OttCallsSeen {
                 Log.i("$TAG None of this device's calls is unseen, nothing to mark as seen")
                 return@postOnCoreThread
             }
+            // Freeze the bold rendering of exactly these ids for this
+            // viewing session (oc-bc3a): the user is looking at them RIGHT
+            // NOW, so the list keeps highlighting them even though the mark
+            // (this device's optimistic clear AND the refresh responses)
+            // updates the real state below — badge and notification still
+            // converge live. endUnseenRenderingSession() lifts the freeze
+            // when the user leaves the history.
+            synchronized(lock) { frozenUnseenIds = seenIds.toSet() }
             val target = resolveHttpTarget(core, CALLS_SEEN_PATH) ?: return@postOnCoreThread
             Thread({ postSeenCallIds(target, seenIds, state) }, "OTT Calls Seen HTTP").start()
         }
@@ -268,6 +286,27 @@ object OttCallsSeen {
     }
 
     /**
+     * Ends the current history viewing session (oc-bc3a): ids kept bold by
+     * [markCallsSeen]'s rendering freeze render by real state again, so the
+     * NEXT visit to the Anrufe tab shows the marked rows un-bold. Called
+     * when the user leaves the history (tab switch, app switch).
+     */
+    @AnyThread
+    fun endUnseenRenderingSession() {
+        val hadFrozen = synchronized(lock) {
+            if (frozenUnseenIds.isEmpty()) return
+            frozenUnseenIds = emptySet()
+            true
+        }
+        if (hadFrozen) {
+            // Re-bind observers so any surviving list drops the highlight;
+            // LiveData re-delivers to observers that are currently stopped
+            // once they start again.
+            unseenStateChanged.postValue(snapshotState().newestKnownStartAt)
+        }
+    }
+
+    /**
      * Whether the given call log hasn't been seen yet on any device of the
      * location:
      * - outgoing calls are always seen;
@@ -279,14 +318,21 @@ object OttCallsSeen {
      * - a Call-ID without '_' (legacy FS-generated ids, no embedded call
      *   id) is considered seen;
      * - as long as no server state was ever applied (feature unconfigured
-     *   or not fetched yet) nothing is unseen.
+     *   or not fetched yet) nothing is unseen;
+     * - ids frozen for the current history viewing session (the ones this
+     *   user just marked as seen) stay rendered as unseen until
+     *   [endUnseenRenderingSession] — rendering-only, no other consumer.
      */
     @AnyThread
     fun isUnseenCallLog(callLog: CallLog): Boolean {
         if (callLog.dir == Call.Dir.Outgoing) {
             return false
         }
-        return isUnseen(callLog, snapshotState())
+        if (isUnseen(callLog, snapshotState())) {
+            return true
+        }
+        val ottId = ottIdFromCallId(callLog.callId) ?: return false
+        synchronized(lock) { return frozenUnseenIds.contains(ottId) }
     }
 
     /**

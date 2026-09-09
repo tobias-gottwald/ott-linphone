@@ -324,6 +324,10 @@ class HistoryListFragment : AbstractMainFragment() {
 
         bottomSheetDialog?.dismiss()
         bottomSheetDialog = null
+        // OTT (oc-bc3a): the user is leaving the history — lift the bold
+        // rendering freeze on the ids this visit marked as seen, so the
+        // next visit renders them un-bold.
+        OttCallsSeen.endUnseenRenderingSession()
     }
 
     override fun onResume() {
@@ -331,9 +335,11 @@ class HistoryListFragment : AbstractMainFragment() {
 
         Log.i("$TAG Fragment is resumed, resetting missed calls count")
         sharedViewModel.resetMissedCallsCountEvent.value = Event(true)
-        // OTT: announce to the PBX that this location's calls have been
-        // seen; the server marks everything up to its now as seen and the
-        // local optimistic clear un-bolds all rows.
+        // OTT: announce to the PBX that the user is looking at these calls;
+        // the server marks the exact listed ids as seen. The rows stay
+        // bold for THIS visit (rendering freeze, see OttCallsSeen) and the
+        // notification/badge clear immediately; the next visit after
+        // leaving the tab renders them un-bold.
         OttCallsSeen.markCallsSeen()
         // OTT (oc-bc3a): also re-fetch the unseen state — opening the
         // history is a natural convergence point for a notification whose
