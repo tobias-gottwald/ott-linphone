@@ -795,20 +795,25 @@ class NotificationsManager
         // unseen fetch hasn't completed yet (not ready) also keeps the
         // stock counter — an empty unseen set is only meaningful once the
         // server state was actually applied.
+        //
+        // The just-ended call is counted EXPLICITLY (oc-bc3a): at the
+        // Released callback its log may not be in core.callLogs yet, and
+        // the server-side unseen set cannot know a call whose CDR hasn't
+        // been ingested — both make unseenMissedCount() undercount a fresh
+        // missed call to 0. There is deliberately NO skip for already-seen
+        // calls: at call-end time seen-ness is unknowable (answered on
+        // another device is stamped at CDR ingest seconds later), and the
+        // scheduled convergence refresh dismisses the notification then.
+        // Dropping the notification instead (as oc-bc3a v1 did) loses real
+        // missed calls forever.
         val configured = OttCallsSeen.isConfigured()
         val ready = configured && OttCallsSeen.isReady()
         val missedCallCount: Int = if (ready) {
-            OttCallsSeen.unseenMissedCount()
+            val thisCallCounts = LinphoneUtils.isCallLogMissed(call.callLog) &&
+                OttCallsSeen.isUnseenCallLog(call.callLog)
+            maxOf(OttCallsSeen.unseenMissedCount(), if (thisCallCounts) 1 else 0)
         } else {
             coreContext.core.missedCallsCount
-        }
-        if (ready && missedCallCount <= 0) {
-            // OTT (oc-bc3a): the just-ended call is already seen on
-            // another device of the location (or the dashboard) — posting
-            // a notification for it would show a missed call nobody can
-            // clear except by opening this app, so skip it entirely.
-            Log.i("$TAG Every missed call has already been seen elsewhere, skipping missed call notification")
-            return
         }
         val body: String
         if (missedCallCount > 1) {
