@@ -18,6 +18,9 @@
             name="callsListClickListener"
             type="View.OnClickListener" />
         <variable
+            name="completeTransferClickListener"
+            type="View.OnClickListener" />
+        <variable
             name="callStatisticsClickListener"
             type="View.OnClickListener" />
         <variable
@@ -225,6 +228,25 @@
                 android:visibility="@{!viewModel.fullScreenMode &amp;&amp; !viewModel.pipMode &amp;&amp; (viewModel.isPaused || viewModel.isPausedByRemote) ? View.VISIBLE : View.GONE, default=gone}"
                 app:tint="?attr/color_main1_500"
                 app:layout_constraintDimensionRatio="1:1"
+                app:layout_constraintTop_toTopOf="@id/back"
+                app:layout_constraintBottom_toBottomOf="@id/back"
+                app:layout_constraintEnd_toStartOf="@id/complete_transfer" />
+
+            <ImageView
+                android:id="@+id/complete_transfer"
+                android:onClick="@{completeTransferClickListener}"
+                android:layout_width="@dimen/big_icon_size"
+                android:layout_height="0dp"
+                android:padding="10dp"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="5dp"
+                android:src="@drawable/phone_transfer"
+                android:adjustViewBounds="true"
+                android:background="@drawable/circle_transparent_dark_button_background"
+                android:contentDescription="@string/call_action_complete_transfer"
+                android:visibility="@{!viewModel.fullScreenMode &amp;&amp; !viewModel.pipMode &amp;&amp; callsViewModel.callsCount > 1 ? View.VISIBLE : View.GONE, default=gone}"
+                app:layout_constraintDimensionRatio="1:1"
+                app:tint="@color/bc_white"
                 app:layout_constraintTop_toTopOf="@id/back"
                 app:layout_constraintBottom_toBottomOf="@id/back"
                 app:layout_constraintEnd_toStartOf="@id/stats" />

@@ -46,8 +46,11 @@ import org.linphone.ui.call.model.ZrtpAlertDialogModel
 import org.linphone.ui.call.model.ZrtpSasConfirmationDialogModel
 import org.linphone.ui.call.viewmodel.CallsViewModel
 import org.linphone.ui.call.viewmodel.CurrentCallViewModel
+import org.linphone.utils.AppUtils
+import org.linphone.utils.ConfirmationDialogModel
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
+import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.addCharacterAtPosition
 import org.linphone.utils.removeCharacterAtPosition
 import org.linphone.utils.startAnimatedDrawable
@@ -198,9 +201,13 @@ class ActiveCallFragment : GenericCallFragment() {
 
         binding.setNewCallClickListener {
             if (findNavController().currentDestination?.id == R.id.activeCallFragment) {
-                val action =
-                    ActiveCallFragmentDirections.actionActiveCallFragmentToNewCallFragment()
-                findNavController().navigate(action)
+                if ((callsViewModel.callsCount.value ?: 0) > 1) {
+                    showConfirmCompleteConsultTransferDialog()
+                } else {
+                    val action =
+                        ActiveCallFragmentDirections.actionActiveCallFragmentToNewCallFragment()
+                    findNavController().navigate(action)
+                }
             }
         }
 
@@ -215,6 +222,12 @@ class ActiveCallFragment : GenericCallFragment() {
         binding.setCallStatisticsClickListener {
             callMediaEncryptionStatsBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
             callStatsBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+
+        binding.setCompleteTransferClickListener {
+            if (findNavController().currentDestination?.id == R.id.activeCallFragment) {
+                showConfirmCompleteConsultTransferDialog()
+            }
         }
 
         binding.setCallMediaEncryptionStatisticsClickListener {
@@ -437,6 +450,53 @@ class ActiveCallFragment : GenericCallFragment() {
         }
 
         set.applyTo(constraintLayout)
+    }
+
+    private fun showConfirmCompleteConsultTransferDialog() {
+        coreContext.postOnCoreThread {
+            val newest = coreContext.core.calls.maxByOrNull { it.callLog.startDate }
+            val to = if (newest != null) {
+                val contact = coreContext.contactsManager.findContactByAddress(newest.remoteAddress)
+                contact?.name ?: LinphoneUtils.getDisplayName(newest.remoteAddress)
+            } else {
+                ""
+            }
+            coreContext.postOnMainThread {
+                val from = callViewModel.displayedName.value.orEmpty()
+                Log.i("$TAG Asking user confirmation before completing consult transfer of call with [$from] to [$to]")
+                val label = AppUtils.getFormattedString(
+                    R.string.call_transfer_confirm_dialog_message,
+                    from,
+                    to
+                )
+                val model = ConfirmationDialogModel(label)
+                val dialog = DialogUtils.getConfirmCallTransferCallDialog(
+                    requireActivity(),
+                    model
+                )
+
+                model.dismissEvent.observe(viewLifecycleOwner) {
+                    it.consume {
+                        Log.i("$TAG Consult transfer was cancelled by user")
+                        dialog.dismiss()
+                    }
+                }
+
+                model.confirmEvent.observe(viewLifecycleOwner) {
+                    it.consume {
+                        coreContext.postOnCoreThread {
+                            callViewModel.completeConsultTransfer()
+                        }
+
+                        dialog.dismiss()
+                        BottomSheetBehavior.from(binding.bottomBar.root).state =
+                            BottomSheetBehavior.STATE_COLLAPSED
+                    }
+                }
+
+                dialog.show()
+            }
+        }
     }
 
     private fun showZrtpSasValidationDialog(

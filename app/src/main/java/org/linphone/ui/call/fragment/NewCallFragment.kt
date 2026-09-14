@@ -19,7 +19,6 @@
  */
 package org.linphone.ui.call.fragment
 
-import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -41,11 +40,9 @@ import org.linphone.databinding.StartCallFragmentBinding
 import org.linphone.ui.main.adapter.ConversationsContactsAndSuggestionsListAdapter
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
-import org.linphone.ui.main.contacts.model.NumberOrAddressPickerDialogModel
 import org.linphone.ui.main.history.viewmodel.StartCallViewModel
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
-import org.linphone.utils.DialogUtils
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.RecyclerViewHeaderDecoration
 import org.linphone.utils.hideKeyboard
@@ -91,8 +88,6 @@ class NewCallFragment : GenericCallFragment() {
         }
     }
 
-    private var numberOrAddressPickerDialog: Dialog? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -107,10 +102,10 @@ class NewCallFragment : GenericCallFragment() {
         binding = StartCallFragmentBinding.inflate(layoutInflater)
         // View model is shared with TransferCallFragment through the call nav graph,
         // so make sure its default tier is applied every time this fragment is entered
-        viewModel.updateContactTier(ContactTier.ALL)
-        // Restore the shared view model's default sorting after a possible
-        // transfer-picker visit (oc-cb72)
-        viewModel.updateSameStoreFirstSorting(false)
+        viewModel.updateContactTier(ContactTier.INTERN)
+        // This fragment is only reachable in-call and is the first step of a consult
+        // transfer, so use the same defaults as the transfer picker (oc-a1f9)
+        viewModel.updateSameStoreFirstSorting(true)
         return binding.root
     }
 
@@ -246,8 +241,6 @@ class NewCallFragment : GenericCallFragment() {
         super.onPause()
 
         viewModel.searchFilter.value = ""
-        numberOrAddressPickerDialog?.dismiss()
-        numberOrAddressPickerDialog = null
     }
 
     private fun startCall(model: ConversationContactOrSuggestionModel) {
@@ -267,25 +260,14 @@ class NewCallFragment : GenericCallFragment() {
             } else {
                 val list = friend.getListOfSipAddressesAndPhoneNumbers(listener)
                 Log.i(
-                    "$TAG [${list.size}] numbers or addresses found for contact [${friend.name}], showing selection dialog"
+                    "$TAG [${list.size}] numbers or addresses found for contact [${friend.name}], using the first one"
                 )
 
-                coreContext.postOnMainThread {
-                    val numberOrAddressModel = NumberOrAddressPickerDialogModel(list)
-                    val dialog =
-                        DialogUtils.getNumberOrAddressPickerDialog(
-                            requireActivity(),
-                            numberOrAddressModel
-                        )
-                    numberOrAddressPickerDialog = dialog
-
-                    numberOrAddressModel.dismissEvent.observe(viewLifecycleOwner) { event ->
-                        event.consume {
-                            dialog.dismiss()
-                        }
-                    }
-
-                    dialog.show()
+                val address = list.firstOrNull()?.address
+                if (address == null) {
+                    Log.e("$TAG No number or address found for contact [${friend.name}], can't start call")
+                } else {
+                    startCall(address)
                 }
             }
         }

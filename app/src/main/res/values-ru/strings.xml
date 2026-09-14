@@ -781,6 +781,8 @@
     <string name="call_transfer_current_call_title">Перевести %s в…</string>
     <string name="call_action_transfer">Перевод звонка</string>
     <string name="call_action_start_new_call">Новый вызов</string>
+    <string name="call_action_transfer_consult">Перевод звонка с консультацией</string>
+    <string name="call_action_complete_transfer">Завершить перевод звонка</string>
     <string name="content_description_answer_video_call">Отвечает на видеовызов</string>
     <string name="content_description_toggle_microphone">Отключить/включить микрофон</string>
     <string name="content_description_create_group_call">Начинает групповой звонок</string>

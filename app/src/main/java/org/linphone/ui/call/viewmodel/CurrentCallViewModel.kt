@@ -972,6 +972,29 @@ class CurrentCallViewModel
     }
 
     @WorkerThread
+    fun completeConsultTransfer() {
+        val calls = coreContext.core.calls
+        if (calls.size < 2) {
+            Log.e("$TAG Can't complete consult transfer, [$${calls.size}] calls found but at least 2 are required")
+            showRedToast(R.string.call_transfer_failed_toast, R.drawable.warning_circle)
+            return
+        }
+
+        val oldest = calls.minByOrNull { it.callLog.startDate }
+        val newest = calls.maxByOrNull { it.callLog.startDate }
+        if (oldest == null || newest == null) return
+
+        Log.i(
+            "$TAG Doing a consult transfer between original call [${oldest.remoteAddress.asStringUriOnly()}] and consult call [${newest.remoteAddress.asStringUriOnly()}]"
+        )
+        if (oldest.transferToAnother(newest) == 0) {
+            Log.i("$TAG Consult transfer is successful")
+        } else {
+            Log.e("$TAG Failed to make consult transfer!")
+        }
+    }
+
+    @WorkerThread
     fun blindTransferCallTo(to: Address) {
         if (::currentCall.isInitialized) {
             val callState = currentCall.state

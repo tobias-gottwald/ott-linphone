@@ -544,6 +544,8 @@
     <string name="call_transfer_confirm_dialog_message">Sie sind dabei, Anruf %1$s an %2$s weiterzuleiten.</string>
     <string name="call_action_transfer">Weiterleiten</string>
     <string name="call_action_start_new_call">Neuer Anruf</string>
+    <string name="call_action_transfer_consult">Weiterleiten mit Rückfrage</string>
+    <string name="call_action_complete_transfer">Weiterleiten durchführen</string>
     <string name="call_action_go_to_calls_list">Anrufliste</string>
     <string name="call_action_show_dialer">Tasten</string>
     <string name="call_action_show_messages">Nachrichten</string>

@@ -420,6 +420,8 @@
     <string name="call_transfer_confirm_dialog_message">Je staat op het punt oproep %1$s over te dragen naar %2$s.</string>
     <string name="call_action_transfer">Doorverbinden</string>
     <string name="call_action_start_new_call">Nieuwe oproep</string>
+    <string name="call_action_transfer_consult">Doorverbinden met overleg</string>
+    <string name="call_action_complete_transfer">Doorverbinden voltooien</string>
     <string name="call_action_go_to_calls_list">Oproepenlijst</string>
     <string name="call_action_show_dialer">Toetsenbord</string>
     <string name="call_action_pause_call">Pauzeren</string>

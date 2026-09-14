@@ -389,6 +389,8 @@
     <string name="call_transfer_confirm_dialog_tittle">ຢືນຢັນການໂອນສາຍ</string>
     <string name="call_action_transfer">ໂອນສາຍ</string>
     <string name="call_action_start_new_call">ໂທໃໝ່</string>
+    <string name="call_action_transfer_consult">ໂອນສາຍພ້ອມສອບຖາມ</string>
+    <string name="call_action_complete_transfer">ສຳເລັດການໂອນສາຍ</string>
     <string name="call_action_go_to_calls_list">ລາຍການການໂທ</string>
     <string name="call_action_show_dialer">ແປ້ນໂທ</string>
     <string name="call_action_show_messages">ຂໍ້ຄວາມ</string>

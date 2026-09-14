@@ -693,6 +693,8 @@
     <string name="call_transfer_confirm_dialog_message">Vous allez transférer %1$s à %2$s.</string>
     <string name="call_action_transfer">Transfert</string>
     <string name="call_action_start_new_call">Nouvel appel</string>
+    <string name="call_action_transfer_consult">Transfert avec consultation</string>
+    <string name="call_action_complete_transfer">Finaliser le transfert</string>
     <string name="call_action_go_to_calls_list">Liste des appels</string>
     <string name="call_action_show_dialer">Pavé</string>
     <string name="call_action_show_messages">Messages</string>

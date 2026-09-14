@@ -621,6 +621,8 @@
     <string name="call_transfer_confirm_dialog_message">Chystáte se přepojit hovor %1$s na %2$s.</string>
     <string name="call_action_transfer">Přepojit</string>
     <string name="call_action_start_new_call">Nový hovor</string>
+    <string name="call_action_transfer_consult">Přepojit s konzultací</string>
+    <string name="call_action_complete_transfer">Dokončit přepojení</string>
     <string name="call_action_go_to_calls_list">Seznam hovorů</string>
     <string name="call_action_show_dialer">Číselník</string>
     <string name="call_action_show_messages">Zprávy</string>

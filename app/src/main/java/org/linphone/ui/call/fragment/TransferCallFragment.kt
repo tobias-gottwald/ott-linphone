@@ -19,7 +19,6 @@
  */
 package org.linphone.ui.call.fragment
 
-import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -47,7 +46,6 @@ import org.linphone.ui.call.viewmodel.CurrentCallViewModel
 import org.linphone.ui.main.adapter.ConversationsContactsAndSuggestionsListAdapter
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
-import org.linphone.ui.main.contacts.model.NumberOrAddressPickerDialogModel
 import org.linphone.ui.main.history.viewmodel.StartCallViewModel
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
@@ -89,8 +87,6 @@ class TransferCallFragment : GenericCallFragment() {
     private lateinit var callsAdapter: CallsListAdapter
 
     private lateinit var contactsAdapter: ConversationsContactsAndSuggestionsListAdapter
-
-    private var numberOrAddressPickerDialog: Dialog? = null
 
     private val listener = object : ContactNumberOrAddressClickListener {
         @UiThread
@@ -290,8 +286,6 @@ class TransferCallFragment : GenericCallFragment() {
         super.onPause()
 
         viewModel.searchFilter.value = ""
-        numberOrAddressPickerDialog?.dismiss()
-        numberOrAddressPickerDialog = null
     }
 
     override fun onResume() {
@@ -326,25 +320,14 @@ class TransferCallFragment : GenericCallFragment() {
             } else {
                 val list = friend.getListOfSipAddressesAndPhoneNumbers(listener)
                 Log.i(
-                    "$TAG [${list.size}] numbers or addresses found for contact [${friend.name}], showing selection dialog"
+                    "$TAG [${list.size}] numbers or addresses found for contact [${friend.name}], using the first one"
                 )
 
-                coreContext.postOnMainThread {
-                    val numberOrAddressModel = NumberOrAddressPickerDialogModel(list)
-                    val dialog =
-                        DialogUtils.getNumberOrAddressPickerDialog(
-                            requireActivity(),
-                            numberOrAddressModel
-                        )
-                    numberOrAddressPickerDialog = dialog
-
-                    numberOrAddressModel.dismissEvent.observe(viewLifecycleOwner) { event ->
-                        event.consume {
-                            dialog.dismiss()
-                        }
-                    }
-
-                    dialog.show()
+                val address = list.firstOrNull()?.address
+                if (address == null) {
+                    Log.e("$TAG No number or address found for contact [${friend.name}], can't start transfer")
+                } else {
+                    doCallTransfer(address, model.name)
                 }
             }
         }

@@ -592,6 +592,8 @@
     <string name="conversation_maximum_number_of_attachments_reached">Numero massimo di allegati raggiunto.</string>
     <string name="call_transfer_confirm_dialog_tittle">Conferma il trasferimento</string>
     <string name="call_action_start_new_call">Nuova chiamata</string>
+    <string name="call_action_transfer_consult">Trasferimento con consultazione</string>
+    <string name="call_action_complete_transfer">Completa il trasferimento</string>
     <string name="call_stats_zrtp_hash_algo">Algoritmo di hash: %s</string>
     <string name="content_description_click_for_more_info">Tocca per avere più informazioni</string>
     <string name="content_description_save_file">Salva il file</string>

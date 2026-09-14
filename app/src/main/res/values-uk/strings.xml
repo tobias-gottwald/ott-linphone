@@ -657,6 +657,8 @@
     <string name="call_do_zrtp_sas_validation_again">Перевірте ZRTP SAS ще раз</string>
     <string name="call_action_transfer">Перенаправлення</string>
     <string name="call_action_start_new_call">Новий дзвінок</string>
+    <string name="call_action_transfer_consult">Перенаправлення з консультацією</string>
+    <string name="call_action_complete_transfer">Завершити перенаправлення</string>
     <string name="call_action_go_to_calls_list">Список дзвінків</string>
     <string name="call_action_show_dialer">Номеронабирач</string>
     <string name="call_action_show_messages">Повідомлення</string>

@@ -533,6 +533,8 @@
     <string name="call_transfer_confirm_dialog_message">Você está prestes a transferir a chamada %1$s para %2$s.</string>
     <string name="call_action_transfer">Transferir</string>
     <string name="call_action_start_new_call">Nova chamada</string>
+    <string name="call_action_transfer_consult">Transferir com consulta</string>
+    <string name="call_action_complete_transfer">Concluir transferência</string>
     <string name="call_action_go_to_calls_list">Lista de chamadas</string>
     <string name="call_action_show_dialer">Teclado</string>
     <string name="call_action_show_messages">Mensagens</string>

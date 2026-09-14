@@ -776,6 +776,8 @@
 
     <string name="call_action_transfer">Transfer</string>
     <string name="call_action_start_new_call">New call</string>
+    <string name="call_action_transfer_consult">Transfer with consultation</string>
+    <string name="call_action_complete_transfer">Complete transfer</string>
     <string name="call_action_go_to_calls_list">Calls list</string>
     <string name="call_action_show_dialer">Dialer</string>
     <string name="call_action_show_messages">Messages</string>

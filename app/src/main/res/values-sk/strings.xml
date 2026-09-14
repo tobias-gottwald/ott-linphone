@@ -590,6 +590,8 @@
     <string name="call_transfer_confirm_dialog_message">Chystáte sa presmerovať hovor %1$s na %2$s.</string>
     <string name="call_action_transfer">Presmerovať</string>
     <string name="call_action_start_new_call">Nový hovor</string>
+    <string name="call_action_transfer_consult">Presmerovať s konzultáciou</string>
+    <string name="call_action_complete_transfer">Dokončiť presmerovanie</string>
     <string name="call_action_go_to_calls_list">Zoznam hovorov</string>
     <string name="call_action_show_dialer">Číselník (numerická klávesnica)</string>
     <string name="call_action_show_messages">Správy</string>

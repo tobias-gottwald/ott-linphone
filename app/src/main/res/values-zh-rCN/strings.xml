@@ -555,6 +555,8 @@
     <string name="call_transfer_confirm_dialog_message">您即将将呼叫%1$s转接到%2$s。</string>
     <string name="call_action_transfer">呼叫转移</string>
     <string name="call_action_start_new_call">新建通话</string>
+    <string name="call_action_transfer_consult">咨询转接</string>
+    <string name="call_action_complete_transfer">完成转接</string>
     <string name="call_action_show_dialer">拨号</string>
     <string name="call_action_show_messages">消息</string>
     <string name="call_action_pause_call">暂停</string>
