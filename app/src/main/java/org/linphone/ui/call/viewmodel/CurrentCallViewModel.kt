@@ -980,9 +980,25 @@ class CurrentCallViewModel
             return
         }
 
-        val oldest = calls.minByOrNull { it.callLog.startDate }
-        val newest = calls.maxByOrNull { it.callLog.startDate }
-        if (oldest == null || newest == null) return
+        val oldest = calls.minByOrNull { it.callLog?.startDate ?: Long.MAX_VALUE }
+        val newest = calls.maxByOrNull { it.callLog?.startDate ?: Long.MIN_VALUE }
+        if (oldest == null || newest == null || oldest == newest) {
+            Log.e("$TAG Can't complete consult transfer, could not resolve two distinct calls")
+            showRedToast(R.string.call_transfer_failed_toast, R.drawable.warning_circle)
+            return
+        }
+        // Mirror attendedTransferCallTo's ending-state guards: a REFER onto
+        // a call that is already releasing fails opaquely at the SIP layer.
+        if (LinphoneUtils.isCallEnding(oldest.state, considerReleasedAsEnding = true)) {
+            Log.e("$TAG Do not attempt consult transfer, original call state is [${oldest.state}]")
+            showRedToast(R.string.call_transfer_failed_toast, R.drawable.warning_circle)
+            return
+        }
+        if (LinphoneUtils.isCallEnding(newest.state, considerReleasedAsEnding = true)) {
+            Log.e("$TAG Do not attempt consult transfer, consult call state is [${newest.state}]")
+            showRedToast(R.string.call_transfer_failed_toast, R.drawable.warning_circle)
+            return
+        }
 
         Log.i(
             "$TAG Doing a consult transfer between original call [${oldest.remoteAddress.asStringUriOnly()}] and consult call [${newest.remoteAddress.asStringUriOnly()}]"
