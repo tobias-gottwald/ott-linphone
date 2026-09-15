@@ -3,7 +3,7 @@
     <dimen name="sliding_pane_left_fragment_width">450dp</dimen>
 
     <dimen name="call_main_actions_menu_height">110dp</dimen>
-    <dimen name="call_all_actions_menu_height">235dp</dimen> <!-- sum of above two -->
+    <dimen name="call_all_actions_menu_height">255dp</dimen> <!-- 2-line labels -->
 
     <dimen name="section_max_width">600dp</dimen>
     <dimen name="dialog_max_width">600dp</dimen>
