@@ -67,9 +67,10 @@ import java.net.URL
  * (the uuid never contains '_'); see [ottIdFromCallId]. Call logs whose
  * Call-ID has no '_' (legacy, pre-embedding ids) are considered seen.
  *
- * Authentication uses the CardDAV identity from the [ott] configuration
- * section (carddav_username + carddav_password, i.e. `<ext>@carddav` and
- * the org-wide contacts secret) — NOT the SIP credentials: liblinphone
+ * Authentication uses the per-device phone-content credential from the
+ * [ott] configuration section (carddav_username + carddav_password, i.e.
+ * the device-unique `<ext>-<hex>` login and its dedicated secret minted at
+ * provisioning time) — NOT the SIP credentials: liblinphone
  * converts auth infos to HA1 on config write-back (store_ha1_passwd), so
  * the SIP password is unreadable after the first provisioning apply and can
  * never serve as HTTP Basic auth. The carddav entries are plain config
@@ -673,9 +674,9 @@ object OttCallsSeen {
 
     /**
      * The CardDAV identity for the calls-seen Basic auth: [ott]
-     * carddav_username (the sidecar's `<ext>@carddav` login) and
-     * carddav_password (the org-wide contacts secret). Read from the raw
-     * config entries, never from an AuthInfo object — liblinphone
+     * carddav_username (the device-unique `<ext>-<hex>` login minted at
+     * provisioning) and carddav_password (its per-device secret). Read from
+     * the raw config entries, never from an AuthInfo object — liblinphone
      * ha1-ifies auth infos on config write-back, config entries stay
      * cleartext. Anonymous dev setups (no carddav_password entry) disable
      * the feature. Must be called from the core thread.
