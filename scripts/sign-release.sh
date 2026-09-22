@@ -49,9 +49,10 @@ esac
 read -rs -p "gpg passphrase for $KEY_GPG: " GPG_PASS </dev/tty; printf '\n' >&2
 read -rs -p "keystore password: " KS_PASS </dev/tty; printf '\n' >&2
 
-KEY="$(mktemp "${TMPDIR:-/tmp}/ott-sign-key.XXXXXX")"
-trap 'rm -f "$KEY"' EXIT
-chmod 600 "$KEY"
+KEYDIR="$(mktemp -d "${TMPDIR:-/tmp}/ott-sign-key.XXXXXX")"
+KEY="$KEYDIR/upload.jks"
+trap 'rm -rf "$KEYDIR"' EXIT
+chmod 700 "$KEYDIR"
 
 if ! printf '%s\n' "$GPG_PASS" | gpg --batch -q --pinentry-mode loopback --passphrase-fd 0 \
         -o "$KEY" "$KEY_GPG"; then
@@ -73,8 +74,9 @@ case "$(basename "$ARTIFACT")" in
         BT="$(ls -d "$SDK"/build-tools/*/ 2>/dev/null | sort -V | tail -n1 || true)"
         APKSIGNER="${BT}apksigner.bat"
         [ -f "$APKSIGNER" ] || { echo "apksigner not found under $SDK (set ANDROID_HOME)" >&2; exit 1; }
-        OUT="$(mktemp "${TMPDIR:-/tmp}/ott-signed.XXXXXX.apk")"
-        trap 'rm -f "$KEY" "$OUT"' EXIT
+        OUTDIR="$(mktemp -d "${TMPDIR:-/tmp}/ott-signed.XXXXXX")"
+        OUT="$OUTDIR/signed.apk"
+        trap 'rm -rf "$KEYDIR" "$OUTDIR"' EXIT
         OTT_KS_PASS="$KS_PASS" "$APKSIGNER" sign \
             --ks "$KEY" --ks-key-alias "$ALIAS" --ks-pass env:OTT_KS_PASS \
             --out "$OUT" "$ARTIFACT"
@@ -82,10 +84,11 @@ case "$(basename "$ARTIFACT")" in
         "$APKSIGNER" verify --print-certs "$ARTIFACT" >/dev/null
         ;;
 esac
-unset KS_PASS
-
 echo
 echo "OK, signed: $ARTIFACT"
-echo "Next:"
-echo "  Play: https://play.google.com/console -> your app -> Testing -> Internal testing -> New release"
-echo "  Pilot: adb install -r \"$ARTIFACT\""
+case "$ARTIFACT" in
+    *.aab)
+        echo "Next: https://play.google.com/console -> your app -> Testing -> Internal testing -> New release"
+        echo "(AABs are Play-upload only — adb installs APKs, not AABs)" ;;
+    *) echo "Pilot: adb install -r \"$ARTIFACT\"" ;;
+esac

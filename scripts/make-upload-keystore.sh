@@ -46,9 +46,10 @@ echo "Creating upload keystore (alias '$ALIAS', RSA-4096, PKCS12) ..."
 prompt_secret KS_PASS "Keystore+key password" 6
 prompt_secret GPG_PASS "gpg passphrase for $DEST" 8
 
-TMP="$(mktemp "${TMPDIR:-/tmp}/ott-upload-key.XXXXXX")"
-trap 'rm -f "$TMP"' EXIT
-chmod 600 "$TMP"
+TMPDIR_KEY="$(mktemp -d "${TMPDIR:-/tmp}/ott-upload-key.XXXXXX")"
+TMP="$TMPDIR_KEY/upload.jks"
+trap 'rm -rf "$TMPDIR_KEY"' EXIT
+chmod 700 "$TMPDIR_KEY"
 
 keytool -genkeypair \
     -keystore "$TMP" -alias "$ALIAS" -storetype PKCS12 \
@@ -67,7 +68,6 @@ printf '%s\n' "$GPG_PASS" | gpg --batch --yes --pinentry-mode loopback --passphr
 # roundtrip verification: decrypt to a temp file and list the key
 printf '%s\n' "$GPG_PASS" | gpg --batch -q --pinentry-mode loopback --passphrase-fd 0 \
     -o "$TMP.verify" "$DEST"
-trap 'rm -f "$TMP" "$TMP.verify"' EXIT
 keytool -list -keystore "$TMP.verify" -storepass "$KS_PASS" -alias "$ALIAS" >/dev/null
 
 echo
