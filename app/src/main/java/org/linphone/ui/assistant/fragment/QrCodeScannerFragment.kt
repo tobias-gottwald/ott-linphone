@@ -34,6 +34,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
+import org.linphone.compatibility.Compatibility
 import org.linphone.core.tools.Log
 import org.linphone.databinding.AssistantQrCodeScannerFragmentBinding
 import org.linphone.ui.GenericActivity
@@ -88,6 +89,19 @@ class QrCodeScannerFragment : GenericFragment() {
         viewModel.remoteProvisioningSuccessfulEvent.observe(viewLifecycleOwner) {
             it.consume { atLeastOneAccountFound ->
                 if (atLeastOneAccountFound) {
+                    // OTT: QR onboarding bypasses the generic permissions
+                    // fragment. Android 14 denies full-screen intents by
+                    // default for sideloaded apps — without the grant,
+                    // incoming calls cannot take over the (lock) screen and
+                    // are only a heads-up notification. Deep-link the user to
+                    // the per-app toggle right after successful provisioning;
+                    // the finish() below keeps the flow one-tap short.
+                    if (!Compatibility.hasFullScreenIntentPermission(requireContext())) {
+                        Log.w(
+                            "$TAG Full screen intent permission missing, opening settings"
+                        )
+                        Compatibility.requestFullScreenIntentPermission(requireContext())
+                    }
                     requireActivity().finish()
                 } else {
                     goBack()
