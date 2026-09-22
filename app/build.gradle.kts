@@ -3,8 +3,6 @@ import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsPlugin
 import com.google.gms.googleservices.GoogleServicesPlugin
 import java.io.BufferedReader
-import java.io.FileInputStream
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -126,26 +124,6 @@ android {
             }
     }
 
-    val keystorePropertiesFile = rootProject.file("keystore.properties")
-    val keystoreProperties = Properties()
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-
-    signingConfigs {
-        create("release") {
-            val keyStorePath = keystoreProperties["storeFile"] as String
-            val keyStore = project.file(keyStorePath)
-            if (keyStore.exists()) {
-                storeFile = keyStore
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                println("Signing config release is using keystore [$storeFile]")
-            } else {
-                println("Keystore [$storeFile] doesn't exists!")
-            }
-        }
-    }
-
     buildTypes {
         getByName("debug") {
             if (useDifferentPackageNameForDebugBuild) {
@@ -183,7 +161,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Deliberately unsigned: signing happens post-build via scripts/sign-release.sh
+            // (interactive, secrets never in repo/env/argv). See INSTALL.md.
 
             val appVersion = gitVersion
             val appBranch = gitBranch

@@ -4,7 +4,7 @@ OTThören is an OTT-specific fork of [linphone-android](https://gitlab.linphone.
 
 - **Build**: JDK 21 and an Android SDK with compileSdk 37 are required. The Linphone SDK version is pinned in `gradle/libs.versions.toml` and resolved from `download.linphone.org`.
 - **Firebase**: `app/google-services.json` is committed (Firebase project `ott-linphone`, used for FCM push notifications).
-- **Release signing**: uses our own keystore stored OUTSIDE the repo; its path and passwords are configured in `keystore.properties` (the committed file only keeps upstream placeholders so CI/debug builds work).
+- **Release signing**: Gradle always builds UNSIGNED release artifacts. The upload keystore lives gpg-encrypted outside the repo (`~/.ott-secrets/ott-upload.jks.gpg`, created once by `scripts/make-upload-keystore.sh`); `scripts/sign-release.sh` signs AABs/APKs interactively (prompts on your terminal — no secrets in repo, env or argv).
 - **Upstream rebases**: `git fetch upstream --tags && git rebase <tag>` on `ott/master`.
 
 ---

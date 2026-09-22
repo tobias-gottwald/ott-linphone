@@ -21,12 +21,38 @@ app/build/outputs/apk/debug/linphone-android-debug-<version>.apk
 
 Notes:
 - Debug builds are signed with the standard Android debug keystore, so they
-  install via adb without any release-signing setup. Release/Play builds use
-  an own keystore OUTSIDE the repo via `keystore.properties` (see README).
+  install via adb without any release-signing setup. Release signing is a
+  separate interactive step (see "Build a release artifact" below).
 - `app/google-services.json` (Firebase project `ott-linphone`, FCM) is
   committed; the build enables Firebase automatically when it is present.
 - The liblinphone SDK is pinned in `gradle/libs.versions.toml`
   (`linphone = "5.5.16"`) and resolves from `download.linphone.org`.
+
+## CI (GitHub Actions) — where the debug APK download lives
+
+`.github/workflows/android.yml` builds the debug APK on every push to
+`master` or `ott/master` (and on PRs) and uploads it as an artifact
+(`otthoeren-debug-apk`). Public repos run Actions for free.
+
+**Artifacts are only downloadable when signed in to GitHub** (any account
+with read access to the repo — anonymous visitors get nothing, not even a
+button). To fetch the CI APK:
+
+- Browser: repo → **Actions** tab → click the latest "Android CI" run →
+  scroll to the **Artifacts** box at the bottom → `otthoeren-debug-apk`
+  (a zip containing the APK). Retention is 90 days.
+- CLI (once `gh auth login` has been done):
+  ```
+  gh run list --workflow "Android CI" --limit 1
+  gh run download <run-id> -n otthoeren-debug-apk -D ci-apk
+  ```
+- For login-free distribution later (testers, pilot): attach the APK to a
+  GitHub **Release** — release assets are publicly downloadable when the
+  repo is public. Not set up yet.
+
+In practice the local `assembleDebug` build is identical to the CI one, so
+the artifact mainly proves CI is green (and will matter once CI also builds
+release/Play artifacts).
 
 ## Connect the phone over Wi-Fi (wireless ADB) cheatsheet
 
@@ -91,86 +117,81 @@ adb-install-all app/build/outputs/apk/debug/linphone-android-debug-*.apk
 Only serials in `device` state are targeted (`offline`/`unauthorized` are
 skipped); the installs run concurrently and their output streams interleave.
 
-## Build a release APK (realistic performance, pilot builds)
+## Build a release artifact (unsigned) + sign it
 
 Debug builds skip R8 minification and ship with `android:debuggable`, which
 disables ART optimizations — fine for development, not representative for
-performance testing or pilot hand-out. Release builds need our own keystore:
+performance testing or pilot hand-out. Release builds are R8-minified and
+deliberately **unsigned**: no keystore is reachable from Gradle, so no
+secret ever sits in the repo, the build environment or CI. Signing is a
+separate interactive step that prompts in YOUR terminal and cannot be
+piped, scripted or driven by an agent — by design.
 
-1. Create the release keystore (once, OUTSIDE version control — the path is
-   already gitignored):
+One-time setup per machine (~2 min, in your own terminal):
+
+1. Create the upload keystore, stored gpg-encrypted OUTSIDE the repo:
    ```
-   keytool -genkeypair -v -keystore app/bc-android.keystore -alias ott \
-     -keyalg RSA -keysize 4096 -validity 10000
+   bash scripts/make-upload-keystore.sh
    ```
-2. Fill in `keystore.properties` in the repo root (committed placeholders —
-   keep your real passwords OUT of git):
-   ```
-   storeFile=bc-android.keystore
-   storePassword=...
-   keyAlias=ott
-   keyPassword=...
+   Prompts for a keystore password and a gpg passphrase, writes
+   `~/.ott-secrets/ott-upload.jks.gpg`, and verifies the roundtrip.
+2. Back both secrets up offline (password manager/paper + a copy of the
+   `.gpg` file). With Play App Signing a lost upload key is recoverable via
+   a Console key reset, but that support flow costs days — a backup is cheaper.
 
-   Modern keystores are PKCS12, which requires `keyPassword` to equal
-   `storePassword` (keytool silently ignores a differing key password).
-   The file is tracked, so after filling it in run
-   `git update-index --skip-worktree keystore.properties` to keep git from
-   ever staging your passwords (undo with `--no-skip-worktree`).
-3. Build:
-   ```
-   gradlew.bat assembleRelease --console=plain
-   ```
-   Output: `app/build/outputs/apk/release/linphone-android-release-*.apk`,
-   R8-minified and signed. Install exactly like the debug APK.
+Build + sign:
 
-For Google Play an **AAB** (not APK) is required: `gradlew.bat bundleRelease`
-→ `app/build/outputs/bundle/release/linphone-android-release-*.aab`.
+```
+gradlew.bat bundleRelease --console=plain     # Play upload: AAB
+gradlew.bat assembleRelease --console=plain   # pilot hand-out: APK
+bash scripts/sign-release.sh                  # signs newest .aab (or .apk)
+```
 
-## CI (GitHub Actions) — where the APK download lives
+- AAB output: `app/build/outputs/bundle/release/*.aab`
+- APK output: `app/build/outputs/apk/release/linphone-android-release-*.apk`
+  (install exactly like the debug APK)
+- `bash scripts/sign-release.sh <path>` targets a specific artifact;
+  `.aab`s are JAR-signed (SHA-256/RSA), `.apk`s via `apksigner` (v2+).
 
-`.github/workflows/android.yml` builds the debug APK on every push to
-`master` or `ott/master` (and on PRs) and uploads it as an artifact
-(`otthoeren-debug-apk`). Public repos run Actions for free.
+## Google Play distribution (manual Console flow)
 
-**Artifacts are only downloadable when signed in to GitHub** (any account
-with read access to the repo — anonymous visitors get nothing, not even a
-button). To fetch the CI APK:
+No API credentials are needed on this machine at all: uploads happen in
+your logged-in browser. That IS the credential-leak avoidance strategy —
+nothing an agent can read is worth anything.
 
-- Browser: repo → **Actions** tab → click the latest "Android CI" run →
-  scroll to the **Artifacts** box at the bottom → `otthoeren-debug-apk`
-  (a zip containing the APK). Retention is 90 days.
-- CLI (once `gh auth login` has been done):
-  ```
-  gh run list --workflow "Android CI" --limit 1
-  gh run download <run-id> -n otthoeren-debug-apk -D ci-apk
-  ```
-- For login-free distribution later (testers, pilot): attach the APK to a
-  GitHub **Release** — release assets are publicly downloadable when the
-  repo is public. Not set up yet.
+One-time console setup:
 
-In practice the local `assembleDebug` build is identical to the CI one, so
-the artifact mainly proves CI is green (and will matter once CI also builds
-release/Play artifacts).
+1. **Developer account** (one-time $25) at play.google.com/console. Note:
+   NEW personal accounts (created after 2023-11-13) must run a closed test
+   with 12 testers opted in for 14 consecutive days before production
+   access; organization accounts (require a D-U-N-S number) skip that.
+   The **internal testing track** (up to 100 testers, opt-in link) works
+   immediately either way — enough for all staff devices. EEA accounts may
+   face an additional trader verification step.
+2. **Create app**: All apps → Create app (name e.g. "OTThören Telefon",
+   default language, App, Free).
+3. **First upload**: Testing → Internal testing → New release → upload the
+   signed `.aab` from `scripts/sign-release.sh`. Play enrolls the app in
+   **Play App Signing**: accept the default — Google generates and manages
+   the app signing key, our keystore becomes the **upload key** only. A
+   leaked or lost upload key alone cannot publish updates and is
+   recoverable via a Console-side key reset.
+4. **"Set up your app" checklist** (required before production): store
+   listing (assets exist in `metadata/en-US/` and `metadata/icon-source/`),
+   graphics, privacy policy URL, Data safety (the app handles SIP account
+   credentials, contacts, call logs), content rating questionnaire, target
+   audience, app access, countries/pricing (Free).
+5. **versionCode** is hardcoded in `app/build.gradle.kts` (currently
+   602006). Every upload needs a strictly higher one — bump + commit per
+   release. versionName comes from `git describe` on upstream tags.
+6. **GPLv3**: keep the public fork repo link in the listing description
+   (satisfies corresponding-source).
+7. **Testers**: join via the track's opt-in link (any Google account), or
+   add them by email in the console.
+8. **Production**: promote a tested release; expect a standard review
+   (longer for the very first production submission).
 
-## Google Play distribution (future — nothing here is set up yet)
-
-Checklist of what a Play rollout needs (manual Console work first, CI upload
-automation only after the manual flow works):
-
-- A Google Play developer account (one-time $25). Note: NEW personal accounts
-  must run a closed test with 20 testers for 14 days before production
-  access; organization accounts skip that. For the pilot, the **internal
-  testing track** (up to 100 testers) works immediately either way.
-- The release keystore + `keystore.properties` from the section above
-  (becomes the Play App Signing **upload key**).
-- A signed `bundleRelease` AAB, uploaded manually via the Play Console the
-  first time (create app → internal testing → upload).
-- Our own version scheme: the build currently derives versionName/versionCode
-  from upstream tags/git (e.g. `6.3.0-alpha.58+<hash>`); before the first
-  Play upload we must pin our own monotonic versionCode and an OTT-branded
-  versionName.
-- GPLv3: Play listing must offer corresponding source (link to our public
-  repo, or source on request).
-- Later, CI upload automation: a Google service account JSON (created in Play
-  Console → Setup → API access), stored as a GitHub secret, plus an upload
-  action such as `r0adkll/upload-google-play`. Not needed for the pilot.
+Later automation (optional): a service-account JSON + upload action
+(`r0adkll/upload-google-play` or fastlane `supply`) in GitHub Actions with
+the JSON as an Actions secret. Skip it while manual browser upload
+suffices — zero Play credentials on disk is the win.
