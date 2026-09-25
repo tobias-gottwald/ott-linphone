@@ -41,6 +41,7 @@ import org.linphone.ui.main.adapter.ConversationsContactsAndSuggestionsListAdapt
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
 import org.linphone.ui.main.history.viewmodel.StartCallViewModel
+import org.linphone.ui.main.model.ContactSortMode
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
 import org.linphone.utils.LinphoneUtils
@@ -103,9 +104,11 @@ class NewCallFragment : GenericCallFragment() {
         // View model is shared with TransferCallFragment through the call nav graph,
         // so make sure its default tier is applied every time this fragment is entered
         viewModel.updateContactTier(ContactTier.INTERN)
-        // This fragment is only reachable in-call and is the first step of a consult
-        // transfer, so use the same defaults as the transfer picker (oc-a1f9)
-        viewModel.updateSameStoreFirstSorting(true)
+        // This fragment is only reachable in-call and is the first step of a
+        // consult transfer, so use the same defaults as the transfer picker
+        // (oc-a1f9): intern tier sorts same store, then other stores' ring
+        // groups, then other stores' extensions (oc-635b)
+        viewModel.updateContactSortMode(ContactSortMode.TRANSFER)
         return binding.root
     }
 

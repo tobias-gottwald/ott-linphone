@@ -39,6 +39,7 @@ import org.linphone.mediastream.Log
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressModel
 import org.linphone.ui.main.contacts.model.ContactNumberOrAddressClickListener
+import org.linphone.ui.main.model.ContactSortMode
 import org.linphone.ui.main.model.ContactStore
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.model.ConversationContactOrSuggestionModel
@@ -84,10 +85,10 @@ abstract class AddressSelectionViewModel
 
     protected var skipConversation: Boolean = true
 
-    // When true (transfer picker), contact results sort same-store internal
-    // entries before other stores (oc-cb72); suggestions keep pure
-    // alphabetical order.
-    private var sameStoreFirstSorting = false
+    // Contact list ordering policy of the surface showing the list (see
+    // ContactSortMode): ALPHABETICAL until a fragment opts in. Suggestions
+    // (raw numbers/addresses, no store) always keep plain alphabetical order.
+    private var contactSortMode = ContactSortMode.ALPHABETICAL
 
     private var currentFilter = ""
     private var previousFilter = "NotSet"
@@ -234,11 +235,11 @@ abstract class AddressSelectionViewModel
     }
 
     @UiThread
-    fun updateSameStoreFirstSorting(enabled: Boolean) {
-        if (sameStoreFirstSorting == enabled) return
+    fun updateContactSortMode(mode: ContactSortMode) {
+        if (contactSortMode == mode) return
 
-        Log.i("$TAG Same-store-first sorting changed to [$enabled], re-applying current filter")
-        sameStoreFirstSorting = enabled
+        Log.i("$TAG Contact sort mode changed to [$mode], re-applying current filter")
+        contactSortMode = mode
 
         coreContext.postOnCoreThread {
             // Sorting is applied client-side in processMagicSearchResults, so
@@ -482,30 +483,32 @@ abstract class AddressSelectionViewModel
             collator.compare(model1.name, model2.name)
         }
 
-        // Transfer picker (oc-cb72): same-store internal contacts first, then
-        // everything else; within both groups the alphabetical order above is
-        // kept. Suggestions (raw numbers/addresses, no store) keep plain
-        // alphabetical order. Store = first digit of the four-digit extension.
-        if (sameStoreFirstSorting) {
+        // oc-cb72/oc-635b: bucket ordering derived from the store prefix.
+        // The INTERN tier gets the surface's bucket order (transfer vs new
+        // call), other tiers only rank in TRANSFER mode (same-store-first).
+        // Store = first digit of the four-digit extension; ring groups are
+        // the reserved *99 numbers and share their store's prefix.
+        if (contactSortMode != ContactSortMode.ALPHABETICAL) {
             val ownPrefix = ContactStore.storePrefix(
                 LinphoneUtils.getDefaultAccount()?.params?.identityAddress?.username
             )
-            if (ownPrefix != null) {
-                val storeComparator =
-                    Comparator<ConversationContactOrSuggestionModel> { model1, model2 ->
-                        val sameStore1 = ContactStore.isSameStore(model1.address.username, ownPrefix)
-                        val sameStore2 = ContactStore.isSameStore(model2.address.username, ownPrefix)
-                        if (sameStore1 != sameStore2) {
-                            if (sameStore1) -1 else 1
-                        } else {
-                            collator.compare(model1.name, model2.name)
-                        }
-                    }
-                favoritesList.sortWith(storeComparator)
-                contactsList.sortWith(storeComparator)
-                Log.i("$TAG Sorted contacts and favorites with same-store (prefix [$ownPrefix]) entries first")
-            } else {
+            if (ownPrefix == null) {
                 Log.w("$TAG Own extension has no store prefix, keeping alphabetical order")
+            } else {
+                val bucketComparator = Comparator<ConversationContactOrSuggestionModel> { model1, model2 ->
+                    val rank1 = bucketRank(model1.address.username, ownPrefix, tier)
+                    val rank2 = bucketRank(model2.address.username, ownPrefix, tier)
+                    if (rank1 != null && rank2 != null && rank1 != rank2) {
+                        rank1.compareTo(rank2)
+                    } else {
+                        collator.compare(model1.name, model2.name)
+                    }
+                }
+                favoritesList.sortWith(bucketComparator)
+                contactsList.sortWith(bucketComparator)
+                Log.i(
+                    "$TAG Sorted contacts and favorites for tier [$tier] in mode [$contactSortMode] with own store prefix [$ownPrefix]"
+                )
             }
         }
 
@@ -522,6 +525,27 @@ abstract class AddressSelectionViewModel
         Log.i(
             "$TAG Processed [${filteredResults.size}] results: [${conversationsList.size}] conversations, [${favoritesList.size}] favorites, [${contactsList.size}] contacts and [${suggestionsList.size}] suggestions"
         )
+    }
+
+    /**
+     * Bucket rank of a picker entry for the active sort mode and tier, or
+     * null when the entry keeps plain alphabetical order: the INTERN tier
+     * ranks by [ContactStore.internRank] (transfer vs new-call bucket
+     * order), other tiers only rank in TRANSFER mode (oc-cb72
+     * same-store-first).
+     */
+    @WorkerThread
+    private fun bucketRank(username: String?, ownPrefix: Char, tier: ContactTier): Int? {
+        return when {
+            tier == ContactTier.INTERN -> ContactStore.internRank(
+                username,
+                ownPrefix,
+                contactSortMode == ContactSortMode.TRANSFER
+            )
+            contactSortMode == ContactSortMode.TRANSFER ->
+                if (ContactStore.isSameStore(username, ownPrefix)) 0 else 1
+            else -> null
+        }
     }
 
     @WorkerThread

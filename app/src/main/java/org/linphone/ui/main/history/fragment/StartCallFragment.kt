@@ -37,6 +37,7 @@ import org.linphone.databinding.StartCallFragmentBinding
 import org.linphone.ui.GenericActivity
 import org.linphone.ui.main.fragment.GenericAddressPickerFragment
 import org.linphone.ui.main.history.viewmodel.StartCallViewModel
+import org.linphone.ui.main.model.ContactSortMode
 import org.linphone.ui.main.model.GroupSetOrEditSubjectDialogModel
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.addCharacterAtPosition
@@ -95,6 +96,10 @@ class StartCallFragment : GenericAddressPickerFragment() {
     @SuppressLint("SetTextI18n")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewModel = ViewModelProvider(this)[StartCallViewModel::class.java]
+        // Intern tier bucket order for starting a call (oc-635b): other
+        // stores' ring groups first, then the own store, then other stores'
+        // extensions; alphabetical within each bucket
+        viewModel.updateContactSortMode(ContactSortMode.NEW_CALL)
 
         postponeEnterTransition()
         super.onViewCreated(view, savedInstanceState)

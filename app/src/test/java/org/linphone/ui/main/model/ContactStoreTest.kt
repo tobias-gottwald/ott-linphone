@@ -1,6 +1,6 @@
 /*
- * OTT fork: tests for the store-prefix rules used by the transfer picker's
- * same-store-first sorting (oc-cb72).
+ * OTT fork: tests for the store-prefix rules behind the pickers' bucket
+ * sorting (oc-cb72 same-store-first, oc-635b intern-tier bucket order).
  */
 package org.linphone.ui.main.model
 
@@ -44,5 +44,44 @@ class ContactStoreTest {
         // Degradation path: own account has no 4-digit extension -> plain alphabetical
         assertFalse(ContactStore.isSameStore("1042", null))
         assertFalse(ContactStore.isSameStore(null, null))
+    }
+
+    @Test
+    fun isRingGroupMatchesReserved99Numbers() {
+        assertTrue(ContactStore.isRingGroup("1099")) // Kelheim
+        assertTrue(ContactStore.isRingGroup("2099")) // Abensberg
+        assertTrue(ContactStore.isRingGroup("6099")) // test
+        assertFalse(ContactStore.isRingGroup("2042")) // plain extension
+        assertFalse(ContactStore.isRingGroup("199")) // too short
+        assertFalse(ContactStore.isRingGroup("10990")) // too long
+        assertFalse(ContactStore.isRingGroup("10a9")) // not numeric
+        assertFalse(ContactStore.isRingGroup(null))
+    }
+
+    @Test
+    fun transferOrderRanksSameStoreThenOtherRingGroupsThenOtherExts() {
+        assertEquals(0, ContactStore.internRank("2110", '2', sameStoreFirst = true))
+        assertEquals(0, ContactStore.internRank("2099", '2', sameStoreFirst = true)) // own ring group is same store
+        assertEquals(1, ContactStore.internRank("1099", '2', sameStoreFirst = true)) // other store ring group
+        assertEquals(2, ContactStore.internRank("1042", '2', sameStoreFirst = true)) // other store ext
+        assertEquals(3, ContactStore.internRank("+499944123456", '2', sameStoreFirst = true)) // no store
+        assertEquals(3, ContactStore.internRank(null, '2', sameStoreFirst = true))
+    }
+
+    @Test
+    fun newCallOrderRanksOtherRingGroupsThenSameStoreThenOtherExts() {
+        assertEquals(0, ContactStore.internRank("1099", '2', sameStoreFirst = false))
+        assertEquals(1, ContactStore.internRank("2110", '2', sameStoreFirst = false))
+        assertEquals(1, ContactStore.internRank("2099", '2', sameStoreFirst = false)) // own ring group is same store
+        assertEquals(2, ContactStore.internRank("3042", '2', sameStoreFirst = false))
+        assertEquals(3, ContactStore.internRank("+499944123456", '2', sameStoreFirst = false)) // no store
+        assertEquals(3, ContactStore.internRank(null, '2', sameStoreFirst = false))
+    }
+
+    @Test
+    fun internRankDegradesToNoStoreWithoutOwnPrefix() {
+        // Degradation path: own account has no 4-digit extension -> plain alphabetical
+        assertEquals(3, ContactStore.internRank("2110", null, sameStoreFirst = true))
+        assertEquals(3, ContactStore.internRank("2110", null, sameStoreFirst = false))
     }
 }

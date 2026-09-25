@@ -40,10 +40,12 @@ import org.linphone.core.MagicSearchListenerStub
 import org.linphone.core.SearchResult
 import org.linphone.core.tools.Log
 import org.linphone.ui.main.contacts.model.ContactAvatarModel
+import org.linphone.ui.main.model.ContactStore
 import org.linphone.ui.main.model.ContactTier
 import org.linphone.ui.main.viewmodel.AbstractMainViewModel
 import org.linphone.utils.Event
 import org.linphone.utils.FileUtils
+import org.linphone.utils.LinphoneUtils
 
 class ContactsListViewModel
     @UiThread
@@ -447,6 +449,30 @@ class ContactsListViewModel
             collator.compare(model1.getNameToUseForSorting(), model2.getNameToUseForSorting())
         }
 
+        // Intern tier bucket order (oc-635b): other stores' ring groups
+        // first, then the own store, then other stores' extensions — a new
+        // internal call most likely targets another store. The alphabetical
+        // sort above is stable, so each bucket stays alphabetical inside.
+        if (tier == ContactTier.INTERN) {
+            val ownPrefix = ContactStore.storePrefix(
+                LinphoneUtils.getDefaultAccount()?.params?.identityAddress?.username
+            )
+            if (ownPrefix != null) {
+                list.sortWith { model1, model2 ->
+                    val rank1 = ContactStore.internRank(sipUsername(model1), ownPrefix, sameStoreFirst = false)
+                    val rank2 = ContactStore.internRank(sipUsername(model2), ownPrefix, sameStoreFirst = false)
+                    if (rank1 != rank2) {
+                        rank1.compareTo(rank2)
+                    } else {
+                        collator.compare(model1.getNameToUseForSorting(), model2.getNameToUseForSorting())
+                    }
+                }
+                Log.i("$TAG Sorted intern-tier contacts with new-call bucket order (prefix [$ownPrefix])")
+            } else {
+                Log.w("$TAG Own extension has no store prefix, keeping alphabetical order")
+            }
+        }
+
         searchInProgress.postValue(false)
         if (favourites) {
             favouritesList.postValue(list)
@@ -456,6 +482,17 @@ class ContactsListViewModel
         }
 
         Log.i("$TAG Processed [${filteredResults.size}] results into [${list.size} contacts]")
+    }
+
+    /**
+     * SIP username the store-bucket classification is derived from: intern
+     * SIP-dialable rows are single-number vCards, so the first (only) SIP
+     * address is the extension. Null for TEL-only rows (shared contacts,
+     * fax), which classify as belonging to no store.
+     */
+    @WorkerThread
+    private fun sipUsername(model: ContactAvatarModel): String? {
+        return model.address?.username ?: model.friend.addresses.firstOrNull()?.username
     }
 
     @WorkerThread
