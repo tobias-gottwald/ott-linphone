@@ -736,6 +736,14 @@ class CoreContext
         Log.i("$TAG Core started, updating configuration if required")
         core.videoCodecPriorityPolicy = CodecPriorityPolicy.Auto
 
+        // Reconcile the OTT CardDAV provisioning at every core start, not
+        // only when remote provisioning is (re-)fetched: the [ott] section
+        // can change without a configuring event (e.g. re-enrollment with a
+        // different extension), and the Intern/Extern friend lists must be
+        // repointed/removed then or their sync keeps failing with 401 under
+        // the new credentials. No-op without an [ott] section; idempotent.
+        OttCardDavProvisioning.apply(core)
+
         // Set in the Core the list of directories from which it is allowed to delete a file related to a chat message
         val paths = arrayListOf<String>()
         if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {

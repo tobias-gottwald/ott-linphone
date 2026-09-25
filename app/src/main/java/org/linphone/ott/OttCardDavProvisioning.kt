@@ -96,9 +96,15 @@ object OttCardDavProvisioning {
         val desiredUris = desiredLists.map { it.second }.toSet()
 
         val previouslyOwnedUris = readOwnedFriendListUris(config)
-        for (friendList in core.friendsLists) {
+        for (friendList in core.friendsLists.toList()) {
             val uri = friendList.uri ?: continue
-            if (uri in previouslyOwnedUris && uri !in desiredUris) {
+            // liblinphone persists the DISCOVERED collection URI (the
+            // provisioned URL + "/book"), so ownership must be matched
+            // /book-aware — an exact compare misses every list this app
+            // provisioned itself.
+            val isOwned = previouslyOwnedUris.any { isSameBookUri(uri, it) }
+            val isDesired = desiredUris.any { isSameBookUri(uri, it) }
+            if (isOwned && !isDesired) {
                 Log.i(
                     "$TAG Friend list [${friendList.displayName}] with URI [$uri] was provisioned by us but is no longer in configuration, removing it"
                 )
@@ -142,23 +148,29 @@ object OttCardDavProvisioning {
                 }
             }
             val foundAuthInfo = core.findAuthInfo(realm, username, null)
-            if (foundAuthInfo != null) {
+            if (foundAuthInfo != null && foundAuthInfo.password == password) {
                 Log.i(
-                    "$TAG Auth info with username [$username] and realm [$realm] already exists, replacing it to rotate its password"
+                    "$TAG Auth info with username [$username] and realm [$realm] already exists with the provisioned password, keeping it"
                 )
-                core.removeAuthInfo(foundAuthInfo)
             } else {
-                Log.i("$TAG Adding auth info with username [$username] and realm [$realm]")
+                if (foundAuthInfo != null) {
+                    Log.i(
+                        "$TAG Auth info with username [$username] and realm [$realm] already exists, replacing it to rotate its password"
+                    )
+                    core.removeAuthInfo(foundAuthInfo)
+                } else {
+                    Log.i("$TAG Adding auth info with username [$username] and realm [$realm]")
+                }
+                val authInfo = Factory.instance().createAuthInfo(
+                    username,
+                    null,
+                    password,
+                    null,
+                    realm,
+                    null
+                )
+                core.addAuthInfo(authInfo)
             }
-            val authInfo = Factory.instance().createAuthInfo(
-                username,
-                null,
-                password,
-                null,
-                realm,
-                null
-            )
-            core.addAuthInfo(authInfo)
             Log.i("$TAG Persisting provisioned CardDAV auth identity [$username@$realm]")
             config.setStringList(
                 CONFIG_MANAGED_SECTION,
@@ -234,7 +246,26 @@ object OttCardDavProvisioning {
 
     @WorkerThread
     private fun upsertCardDavFriendList(core: Core, displayName: String, url: String) {
-        val existingFriendList = core.friendsLists.find { it.uri == url }
+        // A re-enrollment with a different extension leaves the previously
+        // provisioned "Intern"/"Extern" lists (our display names) pointing at
+        // the OLD extension's addressbook, whose sync then fails with 401
+        // under the new credentials. Repoint by removing the stale list and
+        // re-creating it with the provisioned URI instead of stacking a
+        // duplicate next to it.
+        for (friendList in core.friendsLists.toList()) {
+            val uri = friendList.uri ?: continue
+            if (friendList.displayName == displayName && !isSameBookUri(uri, url)) {
+                Log.i(
+                    "$TAG Friend list [$displayName] with URI [$uri] doesn't match provisioned URI [$url] (enrollment changed?), removing and re-creating it"
+                )
+                core.removeFriendList(friendList)
+            }
+        }
+
+        // liblinphone persists the DISCOVERED collection URI (provisioned
+        // URL + "/book"), so the existing-list lookup must be /book-aware
+        // or every run would create a duplicate list.
+        val existingFriendList = core.friendsLists.find { isSameBookUri(it.uri ?: "", url) }
         if (existingFriendList != null) {
             if (existingFriendList.displayName != displayName) {
                 Log.i(
@@ -243,9 +274,8 @@ object OttCardDavProvisioning {
             }
             existingFriendList.displayName = displayName
             Log.i(
-                "$TAG CardDAV friend list [$displayName] with URI [$url] already exists, synchronizing it"
+                "$TAG CardDAV friend list [$displayName] with URI [$url] already exists, Contacts Manager will synchronize it at core start"
             )
-            existingFriendList.synchronizeFriendsFromServer()
             return
         }
 
@@ -257,5 +287,10 @@ object OttCardDavProvisioning {
         friendList.isDatabaseStorageEnabled = true
         core.addFriendList(friendList)
         friendList.synchronizeFriendsFromServer()
+    }
+
+    @WorkerThread
+    private fun isSameBookUri(listUri: String, provisionedUri: String): Boolean {
+        return listUri == provisionedUri || listUri == "$provisionedUri/book"
     }
 }
