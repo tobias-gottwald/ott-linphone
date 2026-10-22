@@ -54,6 +54,7 @@ import org.linphone.core.tools.Log
 import org.linphone.notifications.NotificationsManager
 import org.linphone.ott.OttCallsSeen
 import org.linphone.ott.OttCardDavProvisioning
+import org.linphone.ott.OttRootCa
 import org.linphone.telecom.TelecomManager
 import org.linphone.ui.call.CallActivity
 import org.linphone.utils.ActivityMonitor
@@ -690,6 +691,10 @@ class CoreContext
         core = Factory.instance().createCoreWithConfig(corePreferences.config, context)
         core.isAutoIterateEnabled = true
         core.addListener(coreListener)
+
+        // OTT: pin liblinphone TLS trust to the bundled ISRG roots before the
+        // core starts, so the very first provisioning fetch already uses it.
+        OttRootCa.apply(context, core)
 
         defaultAccountHasVideoConferenceFactoryUri = core.defaultAccount?.params?.audioVideoConferenceFactoryAddress != null
 

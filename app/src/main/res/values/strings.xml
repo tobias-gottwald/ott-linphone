@@ -1089,5 +1089,5 @@
     <string name="managed_xml_config_title" translatable="false">Inline XML configuration</string>
     <string name="managed_xml_config_description" translatable="false">Raw XML provisioning content applied on startup.</string>
     <string name="managed_root_ca_title" translatable="false">Root CA certificate</string>
-    <string name="managed_root_ca_description" translatable="false">PEM-encoded root certificate(s) used to validate TLS connections.</string>
+    <string name="managed_root_ca_description" translatable="false">PEM-encoded root certificate(s) used to validate TLS connections. Overrides the app\'s built-in Let\'s Encrypt pin.</string>
 </resources>

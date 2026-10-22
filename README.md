@@ -5,6 +5,7 @@ OTThören is an OTT-specific fork of [linphone-android](https://gitlab.linphone.
 - **Build**: JDK 21 and an Android SDK with compileSdk 37 are required. The Linphone SDK version is pinned in `gradle/libs.versions.toml` and resolved from `download.linphone.org`.
 - **Firebase**: `app/google-services.json` is committed (Firebase project `ott-linphone`, used for FCM push notifications).
 - **Release signing**: Gradle always builds UNSIGNED release artifacts. The upload keystore lives gpg-encrypted outside the repo (`~/.ott-secrets/ott-upload.jks.gpg`, created once by `scripts/make-upload-keystore.sh`); `scripts/sign-release.sh` signs AABs/APKs interactively (prompts on your terminal — no secrets in repo, env or argv).
+- **TLS trust pin**: liblinphone does **not** use the Android system trust store — by default it verifies SIP TLS, provisioning and CardDAV against the static Mozilla bundle shipped inside the linphone SDK (no revocation/CT checks; that bundle still validates the eight compromised eMudhra intermediate CAs, Oct 2026). The app therefore pins TLS trust to the Let's Encrypt ISRG roots in `app/src/main/assets/ott_root_ca.pem`, applied by `org.linphone.ott.OttRootCa` before the core starts. The MDM `rootCa` managed-config restriction or a server-side `[sip] root_ca` in the provisioning XML overrides the pin.
 - **Upstream rebases**: `git fetch upstream --tags && git rebase <tag>` on `ott/master`.
 
 ---
