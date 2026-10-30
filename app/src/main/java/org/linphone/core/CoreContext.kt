@@ -55,6 +55,7 @@ import org.linphone.notifications.NotificationsManager
 import org.linphone.ott.OttCallsSeen
 import org.linphone.ott.OttCardDavProvisioning
 import org.linphone.ott.OttRootCa
+import org.linphone.ott.OttRingtones
 import org.linphone.telecom.TelecomManager
 import org.linphone.ui.call.CallActivity
 import org.linphone.utils.ActivityMonitor
@@ -748,6 +749,12 @@ class CoreContext
         // repointed/removed then or their sync keeps failing with 401 under
         // the new credentials. No-op without an [ott] section; idempotent.
         OttCardDavProvisioning.apply(core)
+
+        // OTT: (re-)apply the persisted incoming-call ringtone selection
+        // (system default or one of the bundled Yealink tones). No-op out of
+        // the box: without an explicit choice core.ring stays empty and the
+        // SDK resolves the actual system default ringtone on every call.
+        OttRingtones.applyConfiguredRingtone(context, core)
 
         // Set in the Core the list of directories from which it is allowed to delete a file related to a chat message
         val paths = arrayListOf<String>()

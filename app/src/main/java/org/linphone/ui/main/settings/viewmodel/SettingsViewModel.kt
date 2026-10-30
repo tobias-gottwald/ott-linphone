@@ -41,6 +41,7 @@ import org.linphone.core.MediaEncryption
 import org.linphone.core.Tunnel
 import org.linphone.core.VFS
 import org.linphone.core.tools.Log
+import org.linphone.ott.OttRingtones
 import org.linphone.ui.GenericViewModel
 import org.linphone.ui.main.settings.model.CardDavLdapModel
 import org.linphone.ui.main.settings.model.CodecModel
@@ -92,6 +93,12 @@ class SettingsViewModel
     val autoRecordCalls = MutableLiveData<Boolean>()
 
     val showRingtonePickerEvent = MutableLiveData<Event<Uri?>>()
+
+    val currentRingtoneLabel = MutableLiveData<String>()
+
+    val showRingtoneChooserEvent: MutableLiveData<Event<String>> by lazy {
+        MutableLiveData()
+    }
 
     val callRedirectionService = MutableLiveData<Boolean>()
     val callRedirectionServiceEnabledEvent: MutableLiveData<Event<Boolean>> by lazy {
@@ -400,6 +407,10 @@ class SettingsViewModel
             autoAnswerIncomingCallsDelay.postValue(corePreferences.autoAnswerDelay)
             autoAnswerIncomingCallsWithVideoDirectionSendReceive.postValue(corePreferences.autoAnswerVideoCallsWithVideoDirectionSendReceive)
 
+            // OTT: ringtone selection summary (also self-heals the core value)
+            OttRingtones.applyConfiguredRingtone(coreContext.context, core)
+            currentRingtoneLabel.postValue(OttRingtones.labelForChoice(coreContext.context, OttRingtones.getChoice(coreContext.context)))
+
             setupMediaEncryption()
             setupAudioDevices()
             setupCodecs()
@@ -539,14 +550,41 @@ class SettingsViewModel
     @UiThread
     fun changeRingtone() {
         coreContext.postOnCoreThread { core ->
+            // Also (re-)applies the persisted choice, so the summary shown
+            // in the chooser always matches what the core will actually play.
+            OttRingtones.applyConfiguredRingtone(coreContext.context, core)
+            val choice = OttRingtones.getChoice(coreContext.context)
+            Log.i("$TAG Opening ringtone chooser, current selection is [$choice]")
+            showRingtoneChooserEvent.postValue(Event(choice))
+        }
+    }
+
+    @UiThread
+    fun ringtoneChoiceClicked(choice: String) {
+        if (choice == OttRingtones.CHOICE_CUSTOM) {
+            openSystemRingtonePicker()
+            return
+        }
+        coreContext.postOnCoreThread { core ->
+            val applied = OttRingtones.select(coreContext.context, core, choice)
+            Log.i("$TAG Ringtone selection is now [$applied]")
+            currentRingtoneLabel.postValue(OttRingtones.labelForChoice(coreContext.context, applied))
+        }
+    }
+
+    @UiThread
+    fun openSystemRingtonePicker() {
+        coreContext.postOnCoreThread {
             try {
-                val defaultDeviceRingtone = RingtoneManager.getActualDefaultRingtoneUri(
+                val currentRingtone = if (OttRingtones.getChoice(coreContext.context) == OttRingtones.CHOICE_CUSTOM) {
+                    OttRingtones.getCustomUri(coreContext.context)?.toUri()
+                } else {
+                    null
+                } ?: RingtoneManager.getActualDefaultRingtoneUri(
                     coreContext.context,
                     RingtoneManager.TYPE_RINGTONE
                 )
-                val coreRingtone = core.ring?.toUri()
-                Log.i("$TAG Currently set ringtone in Core is [$coreRingtone], device default ringtone is [$defaultDeviceRingtone]")
-                val currentRingtone = coreRingtone ?: defaultDeviceRingtone
+                Log.i("$TAG Opening system ringtone picker, currently selected ringtone is [$currentRingtone]")
                 showRingtonePickerEvent.postValue(Event(currentRingtone))
             } catch (e: Exception) {
                 Log.e("$TAG Failed to get current ringtone, opening picker anyway: $e")
@@ -558,8 +596,9 @@ class SettingsViewModel
     @UiThread
     fun setRingtoneUri(ringtone: Uri) {
         coreContext.postOnCoreThread { core ->
-            core.ring = ringtone.toString()
+            OttRingtones.selectCustom(coreContext.context, core, ringtone)
             Log.i("$TAG Newly set ringtone is [${core.ring}]")
+            currentRingtoneLabel.postValue(OttRingtones.labelForChoice(coreContext.context, OttRingtones.CHOICE_CUSTOM))
         }
     }
 

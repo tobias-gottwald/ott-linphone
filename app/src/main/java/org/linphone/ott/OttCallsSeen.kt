@@ -23,7 +23,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64
 import androidx.annotation.AnyThread
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.MutableLiveData
@@ -109,12 +108,10 @@ object OttCallsSeen {
     private const val JSON_NEWEST_KNOWN_START_AT = "newestKnownStartAt"
     private const val JSON_CALL_IDS = "callIds"
 
-    private const val CONFIG_SECTION = "ott"
-    private const val CONFIG_INTERN_URL_KEY = "carddav_intern_url"
-    private const val CONFIG_CARDDAV_USERNAME_KEY = "carddav_username"
-    private const val CONFIG_CARDDAV_PASSWORD_KEY = "carddav_password"
-
-    private const val CARD_DAV_PATH_MARKER = "/carddav/"
+    // Sidecar origin + carddav identity derivation lives in the shared
+    // OttPhoneServices helper (extracted oc-aa79) so the voicemail client
+    // and calls-seen share ONE credential convention. The path constants
+    // below stay here: they are calls-seen specific.
     private const val CALLS_UNSEEN_PATH = "/calls/unseen"
     private const val CALLS_SEEN_PATH = "/calls/seen"
 
@@ -147,8 +144,6 @@ object OttCallsSeen {
      * NEXT visit renders the rows un-bold.
      */
     private var frozenUnseenIds: Set<String> = emptySet() // Guarded by [lock]
-
-    private var missingConfigurationLogged = false
 
     /** Runs the delayed convergence refreshes (see [scheduleRefreshFromServer]). */
     private val refreshHandler = Handler(Looper.getMainLooper())
@@ -644,61 +639,23 @@ object OttCallsSeen {
     }
 
     /**
-     * Derives the PBX sidecar base URL from the [ott] carddav_intern_url
-     * configuration value by stripping the /carddav/<ext>/<scope> path
-     * suffix: https://pbx.example.com:9443/carddav/42/intern becomes
-     * https://pbx.example.com:9443. When the configuration value is empty
-     * the feature is disabled (logged once per process only).
+     * The PBX sidecar base URL — see [OttPhoneServices.sidecarBaseUrl].
+     * Must be called from the core thread.
      */
     @WorkerThread
     private fun ottBaseUrl(core: Core): String? {
-        val internUrl = core.config.getString(CONFIG_SECTION, CONFIG_INTERN_URL_KEY, "").orEmpty().trim()
-        if (internUrl.isEmpty()) {
-            if (!missingConfigurationLogged) {
-                missingConfigurationLogged = true
-                Log.i(
-                    "$TAG No [$CONFIG_SECTION] $CONFIG_INTERN_URL_KEY in configuration, calls-seen feature disabled"
-                )
-            }
-            return null
-        }
-        val markerIndex = internUrl.indexOf(CARD_DAV_PATH_MARKER)
-        if (markerIndex <= 0) {
-            Log.w(
-                "$TAG [$CONFIG_SECTION] $CONFIG_INTERN_URL_KEY [$internUrl] doesn't contain the expected [$CARD_DAV_PATH_MARKER] path, cannot derive calls-seen endpoint"
-            )
-            return null
-        }
-        return internUrl.substring(0, markerIndex)
+        return OttPhoneServices.sidecarBaseUrl(core)
     }
 
     /**
-     * The CardDAV identity for the calls-seen Basic auth: [ott]
-     * carddav_username (the device-unique `<ext>-<hex>` login minted at
-     * provisioning) and carddav_password (its per-device secret). Read from
-     * the raw config entries, never from an AuthInfo object — liblinphone
-     * ha1-ifies auth infos on config write-back, config entries stay
-     * cleartext. Anonymous dev setups (no carddav_password entry) disable
-     * the feature. Must be called from the core thread.
+     * The CardDAV identity for the calls-seen Basic auth — see
+     * [OttPhoneServices.carddavCredentials]. Must be called from the core
+     * thread.
      */
     @WorkerThread
     private fun carddavCredentials(core: Core): Credentials? {
-        val username = core.config.getString(CONFIG_SECTION, CONFIG_CARDDAV_USERNAME_KEY, "").orEmpty().trim()
-        val password = core.config.getString(CONFIG_SECTION, CONFIG_CARDDAV_PASSWORD_KEY, "").orEmpty().trim()
-        if (username.isEmpty() || password.isEmpty()) {
-            if (!missingConfigurationLogged) {
-                missingConfigurationLogged = true
-                Log.i(
-                    "$TAG No [$CONFIG_SECTION] carddav credentials in configuration, calls-seen feature disabled"
-                )
-            }
-            return null
-        }
-        return Credentials(username, basicAuthorization(username, password))
-    }
-
-    private fun basicAuthorization(username: String, password: String): String {
-        return "Basic " + Base64.encodeToString("$username:$password".toByteArray(), Base64.NO_WRAP)
+        val credentials = OttPhoneServices.carddavCredentials(core) ?: return null
+        return Credentials(credentials.username, credentials.authorization)
     }
 
     /**

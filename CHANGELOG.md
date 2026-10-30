@@ -13,8 +13,15 @@ Group changes to describe their impact on the project, as follows:
 ## [6.3.0] - Unreleased
 
 ### Added
+- Store voicemail tab replacing Conversations: list, audio playback from the
+  storage URL (seek, pause on any SIP call activity), transcript states
+- Bundled Yealink ringtones 1-8 with a system-default option in settings
 - Client secret support to OIDC authentication
 - Call Redirection Service APIs allowing to redirect a GSM call to a SIP address via Linphone
+
+### Changed
+- Missed/unseen calls are highlighted with a grey row background shared
+  across devices (same source as the bold name), cleared store-wide once seen
 
 ## [6.2.6] - 2026-08-20
 

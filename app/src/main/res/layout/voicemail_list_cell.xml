@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <import type="android.view.View" />
+        <variable
+            name="onClickListener"
+            type="View.OnClickListener" />
+        <variable
+            name="model"
+            type="org.linphone.ui.main.voicemail.model.VoicemailModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/voicemail_cell"
+        android:onClick="@{onClickListener}"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/primary_cell_background">
+
+        <ImageView
+            android:id="@+id/voicemail_icon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="2dp"
+            android:src="@drawable/voicemail"
+            android:contentDescription="@null"
+            android:tint="@{model.audioAvailable ? @color/main2_600 : @color/gray_main2_400, default=@color/main2_600}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/caller_name"
+            app:layout_constraintBottom_toBottomOf="@id/date_time" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/default_text_style_600"
+            android:id="@+id/caller_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp"
+            android:text="@{model.displayName, default=`Maria Mustermann`}"
+            android:textSize="15sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/gray_main2_700"
+            app:layout_constraintStart_toEndOf="@id/voicemail_icon"
+            app:layout_constraintEnd_toStartOf="@id/duration"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/default_text_style_300"
+            android:id="@+id/date_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="@{model.dateTime, default=`August 13th 2026 | 07:47 PM`}"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/main2_600"
+            app:layout_constraintStart_toStartOf="@id/caller_name"
+            app:layout_constraintEnd_toStartOf="@id/duration"
+            app:layout_constraintTop_toBottomOf="@id/caller_name"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/default_text_style_300"
+            android:id="@+id/duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="@{model.formattedDuration, default=`01:12`}"
+            android:textSize="12sp"
+            android:textColor="@color/main2_600"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/caller_name"
+            app:layout_constraintBottom_toBottomOf="@id/date_time" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

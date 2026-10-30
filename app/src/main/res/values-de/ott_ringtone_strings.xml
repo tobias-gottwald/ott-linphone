@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OTT Klingelton-Auswahl (Systemstandard / mitgelieferte Yealink-Klingeltöne) -->
+    <string name="ott_ringtone_dialog_title">Klingelton</string>
+    <string name="ott_ringtone_system_label">Systemklingelton (Standard)</string>
+    <string name="ott_ringtone_yealink_label">Yealink %1$d</string>
+    <string name="ott_ringtone_pick_from_device_label">Klingeltöne vom Gerät wählen\u2026</string>
+    <string name="ott_ringtone_custom_label">Eigener Klingelton</string>
+    <string name="ott_ringtone_custom_with_name_label">Eigener Klingelton: %1$s</string>
+</resources>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OTT voicemail UI strings (oc-aa79), German — die primäre Sprache der
+  Nutzer. Eigene Datei, getrennt von der gemeinsamen strings.xml
+  (Eigentumsgrenzen). Englischer Fallback: values/ott_voicemail_strings.xml.
+-->
+<resources>
+    <!-- Tab in der unteren Navigation -->
+    <string name="ott_voicemail_bottom_nav_label">Anrufbeantworter</string>
+
+    <!-- Liste -->
+    <string name="ott_voicemail_list_empty">Keine Nachrichten vorhanden</string>
+    <string name="ott_voicemail_unknown_caller">Unbekannter Anrufer</string>
+    <string name="ott_voicemail_refresh_content_description">Nachrichten aktualisieren</string>
+
+    <!-- Fehlerzustände -->
+    <string name="ott_voicemail_error_unauthorized">Zugriff verweigert. Bitte wenden Sie sich an Ihren Administrator.</string>
+    <string name="ott_voicemail_error_no_location">Diesem Telefon ist kein Standort zugeordnet.</string>
+    <string name="ott_voicemail_error_server">Der Anrufbeantworter ist derzeit nicht verfügbar.</string>
+    <string name="ott_voicemail_error_network">Keine Verbindung zum Server.</string>
+    <string name="ott_voicemail_error_generic">Nachrichten konnten nicht geladen werden.</string>
+    <string name="ott_voicemail_error_retry_label">Erneut versuchen</string>
+
+    <!-- Detailansicht -->
+    <string name="ott_voicemail_detail_back_content_description">Zurück zur Nachrichtenliste</string>
+    <string name="ott_voicemail_detail_not_found">Diese Nachricht ist nicht mehr verfügbar.</string>
+    <string name="ott_voicemail_play_content_description">Nachricht abspielen</string>
+    <string name="ott_voicemail_pause_content_description">Nachricht pausieren</string>
+    <string name="ott_voicemail_audio_expired_label">Audio nicht mehr verfügbar</string>
+
+    <!-- Transkript -->
+    <string name="ott_voicemail_transcript_section_title">Transkript</string>
+    <string name="ott_voicemail_transcript_pending">Transkript wird erstellt…</string>
+    <string name="ott_voicemail_transcript_failed">Transkript konnte nicht erstellt werden.</string>
+    <string name="ott_voicemail_transcript_refresh_content_description">Transkript aktualisieren</string>
+
+    <!-- Hinweise -->
+    <string name="ott_voicemail_refresh_failed_toast">Aktualisierung fehlgeschlagen</string>
+    <string name="ott_voicemail_load_more_failed_toast">Weitere Nachrichten konnten nicht geladen werden</string>
+    <string name="ott_voicemail_playback_failed_toast">Wiedergabe fehlgeschlagen</string>
+</resources>

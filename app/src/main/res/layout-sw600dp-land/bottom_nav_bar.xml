@@ -76,7 +76,7 @@
             android:background="@drawable/squircle_transparent_button_background_2"
             android:text="@string/bottom_navigation_calls_label"
             textFont="@{viewModel.callsSelected ? NotoSansFont.NotoSansBold : NotoSansFont.NotoSansRegular}"
-            app:layout_constraintBottom_toTopOf="@id/conversations"
+            app:layout_constraintBottom_toTopOf="@id/voicemail"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/contacts" />
@@ -93,39 +93,27 @@
             app:layout_constraintTop_toTopOf="@id/calls"
             app:layout_constraintEnd_toEndOf="@id/calls"/>
 
+        <!-- Oc-aa79: store voicemail tab replaced the unused SIP chat slot. -->
         <androidx.appcompat.widget.AppCompatTextView
             style="@style/bottom_nav_bar_label_style"
-            android:id="@+id/conversations"
-            android:onClick="@{() -> viewModel.navigateToConversations()}"
+            android:id="@+id/voicemail"
+            android:onClick="@{() -> viewModel.navigateToVoicemail()}"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:paddingTop="5dp"
             android:paddingBottom="5dp"
             android:layout_marginTop="32dp"
             android:textColor="?attr/color_on_main"
-            android:drawableTop="@{viewModel.conversationsSelected ? @drawable/chat_teardrop_text_fill : @drawable/chat_teardrop_text, default=@drawable/chat_teardrop_text}"
+            android:drawableTop="@drawable/voicemail"
             android:drawablePadding="10dp"
             android:drawableTint="?attr/color_on_main"
             android:background="@drawable/squircle_transparent_button_background_2"
-            android:text="@string/bottom_navigation_conversations_label"
-            android:visibility="@{viewModel.hideConversations ? View.GONE : View.VISIBLE}"
-            textFont="@{viewModel.conversationsSelected ? NotoSansFont.NotoSansBold : NotoSansFont.NotoSansRegular}"
+            android:text="@string/ott_voicemail_bottom_nav_label"
+            textFont="@{viewModel.voicemailSelected ? NotoSansFont.NotoSansBold : NotoSansFont.NotoSansRegular}"
             app:layout_constraintBottom_toTopOf="@id/meetings"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/calls" />
-
-        <androidx.appcompat.widget.AppCompatTextView
-            style="@style/unread_count_text_style"
-            android:id="@+id/unread_messages"
-            android:layout_width="@dimen/unread_count_indicator_size"
-            android:layout_height="@dimen/unread_count_indicator_size"
-            android:layout_marginEnd="1dp"
-            android:layout_marginTop="-12dp"
-            android:text="@{String.valueOf(viewModel.unreadMessages), default=`100`}"
-            android:visibility="@{viewModel.unreadMessages > 0 &amp;&amp; !viewModel.hideConversations ? View.VISIBLE : View.GONE}"
-            app:layout_constraintTop_toTopOf="@id/conversations"
-            app:layout_constraintEnd_toEndOf="@id/conversations"/>
 
         <androidx.appcompat.widget.AppCompatTextView
             style="@style/bottom_nav_bar_label_style"
@@ -147,7 +135,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/conversations" />
+            app:layout_constraintTop_toBottomOf="@id/voicemail" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

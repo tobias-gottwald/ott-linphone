@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <import type="android.view.View" />
+        <import type="android.widget.SeekBar" />
+        <variable
+            name="backClickListener"
+            type="View.OnClickListener" />
+        <variable
+            name="retryClickListener"
+            type="View.OnClickListener" />
+        <variable
+            name="seekBarListener"
+            type="SeekBar.OnSeekBarChangeListener" />
+        <variable
+            name="viewModel"
+            type="org.linphone.ui.main.voicemail.viewmodel.VoicemailDetailViewModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/color_background_contrast_in_dark_mode">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/top_bar"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/top_bar_height"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageView
+                style="@style/icon_top_bar_button_style"
+                android:id="@+id/back"
+                android:onClick="@{backClickListener}"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:src="@drawable/caret_left"
+                android:background="@drawable/circle_transparent_light_button_background"
+                android:contentDescription="@string/ott_voicemail_detail_back_content_description"
+                app:tint="?attr/color_main1_500"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                style="@style/default_text_style_700"
+                android:id="@+id/caller_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:text="@{viewModel.displayName, default=`Maria Mustermann`}"
+                android:textSize="15sp"
+                android:textColor="@color/gray_main2_600"
+                android:maxLines="1"
+                android:ellipsize="end"
+                app:layout_constraintVertical_chainStyle="packed"
+                app:layout_constraintEnd_toStartOf="@id/refresh_transcript"
+                app:layout_constraintStart_toEndOf="@id/back"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/date_time" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                style="@style/default_text_style_300"
+                android:id="@+id/date_time"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="@{viewModel.dateTime, default=`August 13th 2026 | 07:47 PM`}"
+                android:textSize="12sp"
+                android:textColor="@color/gray_main2_500"
+                android:maxLines="1"
+                android:ellipsize="end"
+                app:layout_constraintTop_toBottomOf="@id/caller_name"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/refresh_transcript"
+                app:layout_constraintStart_toEndOf="@id/back" />
+
+            <ImageView
+                style="@style/icon_top_bar_button_style"
+                android:id="@+id/refresh_transcript"
+                android:onClick="@{() -> viewModel.refreshDetail()}"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:src="@drawable/arrow_clockwise"
+                android:contentDescription="@string/ott_voicemail_transcript_refresh_content_description"
+                android:background="@drawable/circle_transparent_light_button_background"
+                android:visibility="@{viewModel.transcriptPending ? View.VISIBLE : View.GONE, default=gone}"
+                app:tint="@color/gray_main2_600"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <View
+            android:id="@+id/top_bar_shadow"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/color_separator"
+            app:layout_constraintTop_toBottomOf="@id/top_bar" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/detail_in_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:visibility="@{viewModel.detailInProgress ? View.VISIBLE : View.GONE, default=gone}"
+            app:indicatorColor="?attr/color_main1_500"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/top_bar_shadow"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/detail_error_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="error_icon, error_label, retry"
+            android:visibility="@{viewModel.detailError != null ? View.VISIBLE : View.GONE, default=gone}" />
+
+        <ImageView
+            android:id="@+id/error_icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:src="@drawable/warning_circle"
+            android:contentDescription="@null"
+            app:layout_constraintHeight_max="80dp"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintVertical_chainStyle="packed"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/top_bar_shadow"
+            app:layout_constraintBottom_toTopOf="@id/error_label" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/section_header_style"
+            android:id="@+id/error_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:text="@{viewModel.errorLabel, default=@string/ott_voicemail_error_generic}"
+            android:textAlignment="center"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/error_icon"
+            app:layout_constraintBottom_toTopOf="@id/retry" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/secondary_button_label_style"
+            android:id="@+id/retry"
+            android:onClick="@{retryClickListener}"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/ott_voicemail_error_retry_label"
+            android:background="@drawable/secondary_button_background"
+            app:layout_constraintTop_toBottomOf="@id/error_label"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_bias="0" />
+
+        <!-- Content: scrollable so long transcripts never clip. -->
+
+        <ScrollView
+            android:id="@+id/content_scroll"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:fillViewport="true"
+            android:visibility="@{viewModel.detailReady ? View.VISIBLE : View.GONE, default=gone}"
+            app:layout_constraintTop_toBottomOf="@id/top_bar_shadow"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/player_card"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="16dp"
+                    android:padding="10dp"
+                    android:background="@drawable/shape_squircle_white_r15_background"
+                    app:layout_constraintWidth_max="@dimen/section_max_width"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <ImageView
+                        android:id="@+id/play_pause"
+                        android:onClick="@{() -> viewModel.togglePlayPause()}"
+                        android:layout_width="@dimen/big_icon_size"
+                        android:layout_height="@dimen/big_icon_size"
+                        android:padding="10dp"
+                        android:src="@{viewModel.isPlaying ? @drawable/pause_fill : @drawable/play_fill, default=@drawable/play_fill}"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@{viewModel.isPlaying ? @string/ott_voicemail_pause_content_description : @string/ott_voicemail_play_content_description}"
+                        android:background="@drawable/shape_circle_primary_background"
+                        android:enabled="@{viewModel.audioAvailable}"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:tint="@color/bc_white" />
+
+                    <SeekBar
+                        seekBarListener="@{seekBarListener}"
+                        android:id="@+id/progress"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:splitTrack="false"
+                        android:max="@{viewModel.duration, default=100000}"
+                        android:progress="@{viewModel.position, default=0}"
+                        android:progressDrawable="@drawable/media_player_seekbar"
+                        android:thumb="@drawable/media_player_seekbar_thumb"
+                        android:enabled="@{viewModel.audioAvailable}"
+                        app:layout_constraintTop_toTopOf="@id/play_pause"
+                        app:layout_constraintBottom_toBottomOf="@id/play_pause"
+                        app:layout_constraintStart_toEndOf="@id/play_pause"
+                        app:layout_constraintEnd_toStartOf="@id/position" />
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        style="@style/default_text_style_600"
+                        android:id="@+id/position"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:text="@{viewModel.formattedPosition, default=`00:00`}"
+                        android:textSize="13sp"
+                        android:textColor="@color/gray_main2_600"
+                        android:includeFontPadding="false"
+                        android:padding="10dp"
+                        app:layout_constraintTop_toTopOf="@id/play_pause"
+                        app:layout_constraintBottom_toBottomOf="@id/play_pause"
+                        app:layout_constraintStart_toEndOf="@id/progress"
+                        app:layout_constraintEnd_toStartOf="@id/duration" />
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        style="@style/default_text_style_300"
+                        android:id="@+id/duration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="10dp"
+                        android:text="@{viewModel.formattedDuration, default=`01:12`}"
+                        android:textSize="13sp"
+                        android:textColor="@color/gray_main2_500"
+                        android:includeFontPadding="false"
+                        android:padding="10dp"
+                        app:layout_constraintTop_toTopOf="@id/play_pause"
+                        app:layout_constraintBottom_toBottomOf="@id/play_pause"
+                        app:layout_constraintStart_toEndOf="@id/position"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <LinearLayout
+                    android:id="@+id/audio_expired_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="@{!viewModel.audioAvailable ? View.VISIBLE : View.GONE, default=gone}"
+                    app:layout_constraintTop_toBottomOf="@id/player_card"
+                    app:layout_constraintStart_toStartOf="@id/player_card">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/warning_circle"
+                        android:contentDescription="@null"
+                        app:tint="@color/danger_500" />
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        style="@style/default_text_style"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:text="@string/ott_voicemail_audio_expired_label"
+                        android:textSize="13sp"
+                        android:textColor="@color/danger_500" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    style="@style/default_text_style_700"
+                    android:id="@+id/transcript_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/ott_voicemail_transcript_section_title"
+                    android:textSize="15sp"
+                    android:textColor="?attr/color_main2_700"
+                    android:visibility="@{viewModel.transcriptVisible ? View.VISIBLE : View.GONE, default=gone}"
+                    app:layout_constraintTop_toBottomOf="@id/audio_expired_label"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    style="@style/default_text_style_300"
+                    android:id="@+id/transcript_content"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginTop="10dp"
+                    android:paddingBottom="20dp"
+                    android:text="@{viewModel.transcriptDisplay, default=@string/ott_voicemail_transcript_pending}"
+                    android:textSize="14sp"
+                    android:textColor="@{viewModel.transcriptFailed ? @color/danger_500 : @color/gray_main2_600, default=@color/gray_main2_600}"
+                    android:visibility="@{viewModel.transcriptVisible ? View.VISIBLE : View.GONE, default=gone}"
+                    android:textStyle="italic"
+                    app:layout_constraintTop_toBottomOf="@id/transcript_title"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </ScrollView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

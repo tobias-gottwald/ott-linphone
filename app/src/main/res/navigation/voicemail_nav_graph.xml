@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--suppress ALL -->
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/voicemail_nav_graph"
+    app:startDestination="@id/emptyFragment">
+
+    <fragment
+        android:id="@+id/emptyFragment"
+        android:name="org.linphone.ui.main.fragment.EmptyFragment"
+        android:label="EmptyFragment"
+        tools:layout="@layout/empty_fragment"/>
+
+    <fragment
+        android:id="@+id/voicemailDetailFragment"
+        android:name="org.linphone.ui.main.voicemail.fragment.VoicemailDetailFragment"
+        android:label="VoicemailDetailFragment"
+        tools:layout="@layout/voicemail_detail_fragment">
+        <argument
+            android:name="voicemailId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_voicemailDetailFragment_to_emptyFragment"
+            app:destination="@id/emptyFragment"
+            app:popUpTo="@id/voicemailDetailFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <action
+        android:id="@+id/action_global_voicemailDetailFragment"
+        app:destination="@id/voicemailDetailFragment"
+        app:exitAnim="@anim/slide_out_left"
+        app:popExitAnim="@anim/slide_out_right"
+        app:launchSingleTop="true" />
+
+</navigation>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:bind="http://schemas.android.com/tools">
+
+    <data>
+        <import type="android.view.View" />
+        <variable
+            name="refreshClickListener"
+            type="View.OnClickListener" />
+        <variable
+            name="retryClickListener"
+            type="View.OnClickListener" />
+        <variable
+            name="viewModel"
+            type="org.linphone.ui.main.voicemail.viewmodel.VoicemailListViewModel" />
+    </data>
+
+    <androidx.slidingpanelayout.widget.SlidingPaneLayout
+        android:id="@+id/sliding_pane_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
+            android:layout_width="@dimen/sliding_pane_left_fragment_width"
+            android:layout_height="match_parent">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.constraintlayout.widget.Group
+                    android:id="@+id/empty_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:constraint_referenced_ids="no_voicemails_image, no_voicemails_label"
+                    android:visibility="@{viewModel.emptyList ? View.VISIBLE : View.GONE, default=gone}" />
+
+                <androidx.constraintlayout.widget.Group
+                    android:id="@+id/error_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:constraint_referenced_ids="error_image, error_label, retry"
+                    android:visibility="@{viewModel.errorNotEmptyList ? View.VISIBLE : View.GONE, default=gone}" />
+
+                <include
+                    android:id="@+id/bottom_nav_bar"
+                    android:layout_width="@dimen/landscape_nav_bar_width"
+                    android:layout_height="match_parent"
+                    layout="@layout/bottom_nav_bar"
+                    bind:viewModel="@{viewModel}"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <include
+                    android:id="@+id/top_bar"
+                    layout="@layout/main_activity_top_bar"
+                    bind:viewModel="@{viewModel}"
+                    bind:showExtraAction="@{true}"
+                    bind:extraActionIcon="@{@drawable/arrow_clockwise}"
+                    bind:extraActionClickListener="@{refreshClickListener}"
+                    bind:extraActionContentDescription="@{@string/ott_voicemail_refresh_content_description}"
+                    bind:extraActionEnabled="@{!viewModel.listInProgress}"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/top_bar_height"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/voicemail_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginTop="@dimen/top_bar_height"
+                    android:layout_marginStart="@dimen/landscape_nav_bar_width" />
+
+                <ImageView
+                    android:id="@+id/no_voicemails_image"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:src="@drawable/illu"
+                    android:contentDescription="@null"
+                    app:layout_constraintHeight_max="200dp"
+                    app:layout_constraintBottom_toTopOf="@id/no_voicemails_label"
+                    app:layout_constraintDimensionRatio="1:1"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintTop_toBottomOf="@id/top_bar" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    style="@style/section_header_style"
+                    android:id="@+id/no_voicemails_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ott_voicemail_list_empty"
+                    android:textAlignment="center"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintTop_toBottomOf="@id/no_voicemails_image"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <ImageView
+                    android:id="@+id/error_image"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:src="@drawable/warning_circle"
+                    android:contentDescription="@null"
+                    app:layout_constraintHeight_max="120dp"
+                    app:layout_constraintBottom_toTopOf="@id/error_label"
+                    app:layout_constraintDimensionRatio="1:1"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintTop_toBottomOf="@id/top_bar" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    style="@style/section_header_style"
+                    android:id="@+id/error_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:text="@{viewModel.errorLabel, default=@string/ott_voicemail_error_generic}"
+                    android:textAlignment="center"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintTop_toBottomOf="@id/error_image"
+                    app:layout_constraintBottom_toTopOf="@id/retry" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    style="@style/secondary_button_label_style"
+                    android:id="@+id/retry"
+                    android:onClick="@{retryClickListener}"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/ott_voicemail_error_retry_label"
+                    android:background="@drawable/secondary_button_background"
+                    android:textColor="@color/secondary_button_label_color"
+                    app:layout_constraintTop_toBottomOf="@id/error_label"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintVertical_bias="0" />
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/fetch_in_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                    android:visibility="@{viewModel.listInProgress ? View.VISIBLE : View.GONE, default=gone}"
+                    app:indicatorColor="?attr/color_main1_500"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/load_more_in_progress"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                    android:visibility="@{viewModel.loadMoreInProgress ? View.VISIBLE : View.GONE, default=gone}"
+                    app:indicatorColor="?attr/color_main1_500"
+                    app:layout_constraintStart_toEndOf="@id/bottom_nav_bar"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <include
+                    layout="@layout/sliding_pane_separator"
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/voicemail_nav_container"
+            android:name="androidx.navigation.fragment.NavHostFragment"
+            android:layout_width="@dimen/sliding_pane_right_fragment_width"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            app:defaultNavHost="false"
+            app:navGraph="@navigation/voicemail_nav_graph"/>
+
+    </androidx.slidingpanelayout.widget.SlidingPaneLayout>
+
+</layout>

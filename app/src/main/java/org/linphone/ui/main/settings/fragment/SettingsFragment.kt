@@ -21,29 +21,38 @@ package org.linphone.ui.main.settings.fragment
 
 import android.Manifest
 import android.app.Activity
+import android.app.Dialog
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.UiThread
+import androidx.core.graphics.drawable.toDrawable
+import androidx.databinding.DataBindingUtil
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
 import org.linphone.R
 import org.linphone.compatibility.Compatibility
 import org.linphone.core.tools.Log
+import org.linphone.databinding.DialogOttRingtonePickerBinding
 import org.linphone.databinding.SettingsFragmentBinding
 import org.linphone.ui.GenericActivity
 import org.linphone.ui.main.fragment.GenericMainFragment
-import org.linphone.utils.ConfirmationDialogModel
+import org.linphone.ui.main.settings.model.OttRingtoneModel
+import org.linphone.ui.main.settings.model.OttRingtonePickerDialogModel
 import org.linphone.ui.main.settings.viewmodel.SettingsViewModel
+import org.linphone.utils.ConfirmationDialogModel
 import org.linphone.utils.AppUtils
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
@@ -180,6 +189,12 @@ class SettingsFragment : GenericMainFragment() {
             it.consume {
                 Log.w("$TAG Recreate Activity")
                 requireActivity().recreate()
+            }
+        }
+
+        viewModel.showRingtoneChooserEvent.observe(viewLifecycleOwner) {
+            it.consume { currentChoice ->
+                showRingtoneChooserDialog(currentChoice)
             }
         }
 
@@ -365,6 +380,47 @@ class SettingsFragment : GenericMainFragment() {
                 // TODO: show error to user
             }
         }
+    }
+
+    private fun showRingtoneChooserDialog(currentChoice: String) {
+        val listener = object : OttRingtoneModel.OnClickListener {
+            override fun onClicked(model: OttRingtoneModel) {
+                viewModel.ringtoneChoiceClicked(model.choice)
+            }
+        }
+
+        val model = OttRingtonePickerDialogModel(
+            OttRingtonePickerDialogModel.buildEntries(currentChoice, listener)
+        )
+        val binding: DialogOttRingtonePickerBinding = DataBindingUtil.inflate(
+            layoutInflater,
+            R.layout.dialog_ott_ringtone_picker,
+            null,
+            false
+        )
+        binding.viewModel = model
+
+        val dialog = Dialog(requireActivity(), R.style.Theme_LinphoneDialog)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(binding.root)
+        dialog.window?.apply {
+            setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+
+            val background: Drawable = requireContext().getColor(R.color.bc_black).toDrawable()
+            background.alpha = 153 // 60% opacity
+            setBackgroundDrawable(background)
+        }
+
+        model.dismissEvent.observe(viewLifecycleOwner) {
+            it.consume {
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
     }
 
     override fun onResume() {

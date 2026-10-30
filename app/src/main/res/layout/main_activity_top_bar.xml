@@ -9,6 +9,9 @@
             name="showExtraAction"
             type="Boolean" />
         <variable
+            name="hideSearch"
+            type="Boolean" />
+        <variable
             name="extraActionClickListener"
             type="View.OnClickListener" />
         <variable
@@ -33,7 +36,7 @@
         <androidx.constraintlayout.widget.Group
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:constraint_referenced_ids="drawer_menu, avatar, title, search_toggle"
+            app:constraint_referenced_ids="drawer_menu, avatar, title"
             android:visibility="@{viewModel.searchBarVisible ? View.GONE : View.VISIBLE}" />
 
         <androidx.constraintlayout.widget.Group
@@ -98,6 +101,7 @@
             android:layout_height="0dp"
             android:src="@drawable/magnifying_glass"
             android:contentDescription="@string/content_description_open_filter"
+            android:visibility="@{viewModel.searchBarVisible || hideSearch ? View.GONE : View.VISIBLE}"
             app:layout_constraintEnd_toStartOf="@id/extra_action"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />

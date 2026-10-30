@@ -204,6 +204,21 @@ class HistoryListAdapter :
                     )
                 )
 
+                // OTT: unseen rows also get a neutral grey resting
+                // background so they stand out beyond the bold font
+                // weight. The background is set unconditionally so a
+                // recycled row never keeps the unseen tint of a previous
+                // call log. Same shared isUnseen flag as the bold name
+                // above (not the local missed flag: a call missed here
+                // but answered on another device is not unseen).
+                root.setBackgroundResource(
+                    if (callLogModel.isUnseen) {
+                        R.drawable.history_list_cell_unseen_background
+                    } else {
+                        R.drawable.history_list_cell_background
+                    }
+                )
+
                 executePendingBindings()
             }
         }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OTT: neutral (non-blue) light grey so unseen call history rows are
+         clearly visible on the white resting background and remain
+         distinguishable from the selected/pressed blue-tinted highlight
+         (gray_main2_100 #EEF6F8). -->
+    <color name="ott_history_unseen_cell_background">#E8E8E8</color>
+</resources>

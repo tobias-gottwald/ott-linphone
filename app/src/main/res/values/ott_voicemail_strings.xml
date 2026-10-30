@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OTT voicemail UI strings (oc-aa79). Kept in this separate file on purpose:
+  shared strings.xml stays untouched per ownership boundaries. German is the
+  primary user language (see values-de/ott_voicemail_strings.xml); this file
+  is the English fallback.
+-->
+<resources>
+    <!-- Bottom navigation tab -->
+    <string name="ott_voicemail_bottom_nav_label">Voicemail</string>
+
+    <!-- List -->
+    <string name="ott_voicemail_list_empty">No messages yet</string>
+    <string name="ott_voicemail_unknown_caller">Unknown caller</string>
+    <string name="ott_voicemail_refresh_content_description">Refresh voicemails</string>
+
+    <!-- Error states -->
+    <string name="ott_voicemail_error_unauthorized">Access denied. Please contact your administrator.</string>
+    <string name="ott_voicemail_error_no_location">This phone is not assigned to a store.</string>
+    <string name="ott_voicemail_error_server">The voicemail service is currently unavailable.</string>
+    <string name="ott_voicemail_error_network">No connection to the server.</string>
+    <string name="ott_voicemail_error_generic">Voicemails could not be loaded.</string>
+    <string name="ott_voicemail_error_retry_label">Retry</string>
+
+    <!-- Detail -->
+    <string name="ott_voicemail_detail_back_content_description">Back to voicemails</string>
+    <string name="ott_voicemail_detail_not_found">This voicemail is no longer available.</string>
+    <string name="ott_voicemail_play_content_description">Play voicemail</string>
+    <string name="ott_voicemail_pause_content_description">Pause voicemail</string>
+    <string name="ott_voicemail_audio_expired_label">Audio no longer available</string>
+
+    <!-- Transcript -->
+    <string name="ott_voicemail_transcript_section_title">Transcript</string>
+    <string name="ott_voicemail_transcript_pending">Transcript is being created…</string>
+    <string name="ott_voicemail_transcript_failed">Transcript could not be created.</string>
+    <string name="ott_voicemail_transcript_refresh_content_description">Refresh transcript</string>
+
+    <!-- Toasts -->
+    <string name="ott_voicemail_refresh_failed_toast">Refresh failed</string>
+    <string name="ott_voicemail_load_more_failed_toast">Further voicemails could not be loaded</string>
+    <string name="ott_voicemail_playback_failed_toast">Playback failed</string>
+</resources>

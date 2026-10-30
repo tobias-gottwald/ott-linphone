@@ -87,7 +87,12 @@ class MainActivity : GenericActivity() {
         private const val DEFAULT_FRAGMENT_KEY = "default_fragment"
         private const val CONTACTS_FRAGMENT_ID = 1
         private const val HISTORY_FRAGMENT_ID = 2
-        private const val CHAT_FRAGMENT_ID = 3
+
+        // Oc-aa79: the voicemail tab replaced the unused SIP chat tab in the
+        // bottom navigation and inherits its stored default-fragment id, so
+        // devices that last left the app on the chat tab land on voicemail.
+        // The chat list itself stays reachable (notification/chat intents).
+        private const val VOICEMAIL_FRAGMENT_ID = 3
         private const val MEETINGS_FRAGMENT_ID = 4
 
         private const val REDIRECT_ROLE_REQUEST_CODE = 101
@@ -469,7 +474,13 @@ class MainActivity : GenericActivity() {
                 HISTORY_FRAGMENT_ID
             }
             R.id.conversationsListFragment -> {
-                CHAT_FRAGMENT_ID
+                // No longer a tab (oc-aa79): the voicemail tab took the chat
+                // slot, so leaving from a chat list (reached through a
+                // notification) restores the voicemail tab.
+                VOICEMAIL_FRAGMENT_ID
+            }
+            R.id.voicemailListFragment -> {
+                VOICEMAIL_FRAGMENT_ID
             }
             R.id.meetingsListFragment -> {
                 MEETINGS_FRAGMENT_ID
@@ -562,10 +573,10 @@ class MainActivity : GenericActivity() {
                             navOptions
                         )
                     }
-                    CHAT_FRAGMENT_ID -> {
+                    VOICEMAIL_FRAGMENT_ID -> {
                         findNavController().addOnDestinationChangedListener(destinationListener)
                         findNavController().navigate(
-                            R.id.conversationsListFragment,
+                            R.id.voicemailListFragment,
                             args,
                             navOptions
                         )

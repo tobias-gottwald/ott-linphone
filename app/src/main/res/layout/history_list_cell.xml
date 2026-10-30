@@ -29,7 +29,7 @@
         android:paddingBottom="8dp"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:background="@drawable/primary_cell_background">
+        android:background="@drawable/history_list_cell_background">
 
         <include
             android:id="@+id/avatar"

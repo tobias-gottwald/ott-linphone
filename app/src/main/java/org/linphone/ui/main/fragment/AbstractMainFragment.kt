@@ -47,6 +47,7 @@ import org.linphone.ui.main.chat.fragment.ConversationsListFragmentDirections
 import org.linphone.ui.main.contacts.fragment.ContactsListFragmentDirections
 import org.linphone.ui.main.history.fragment.HistoryListFragmentDirections
 import org.linphone.ui.main.meetings.fragment.MeetingsListFragmentDirections
+import org.linphone.ui.main.voicemail.fragment.VoicemailListFragmentDirections
 import org.linphone.ui.main.viewmodel.AbstractMainViewModel
 import org.linphone.utils.Event
 import org.linphone.utils.SlidingPaneBackPressedCallback
@@ -175,6 +176,14 @@ abstract class AbstractMainFragment : GenericMainFragment() {
             }
         }
 
+        viewModel.navigateToVoicemailEvent.observe(viewLifecycleOwner) {
+            it.consume {
+                if (currentFragmentId != R.id.voicemailListFragment) {
+                    goToVoicemailList()
+                }
+            }
+        }
+
         viewModel.navigateToMeetingsEvent.observe(viewLifecycleOwner) {
             it.consume {
                 if (currentFragmentId != R.id.meetingsListFragment) {
@@ -193,6 +202,7 @@ abstract class AbstractMainFragment : GenericMainFragment() {
             viewModel.contactsSelected.value = it == R.id.contactsListFragment
             viewModel.callsSelected.value = it == R.id.historyListFragment
             viewModel.conversationsSelected.value = it == R.id.conversationsListFragment
+            viewModel.voicemailSelected.value = it == R.id.voicemailListFragment
             viewModel.meetingsSelected.value = it == R.id.meetingsListFragment
         }
 
@@ -376,6 +386,11 @@ abstract class AbstractMainFragment : GenericMainFragment() {
                 val action = HistoryListFragmentDirections.actionHistoryListFragmentToContactsListFragment()
                 navigateTo(action)
             }
+            R.id.voicemailListFragment -> {
+                Log.i("$TAG Leaving voicemail list")
+                val action = VoicemailListFragmentDirections.actionVoicemailListFragmentToContactsListFragment()
+                navigateTo(action)
+            }
         }
     }
 
@@ -395,6 +410,11 @@ abstract class AbstractMainFragment : GenericMainFragment() {
             R.id.meetingsListFragment -> {
                 Log.i("$TAG Leaving meetings list")
                 val action = MeetingsListFragmentDirections.actionMeetingsListFragmentToHistoryListFragment()
+                navigateTo(action)
+            }
+            R.id.voicemailListFragment -> {
+                Log.i("$TAG Leaving voicemail list")
+                val action = VoicemailListFragmentDirections.actionVoicemailListFragmentToHistoryListFragment()
                 navigateTo(action)
             }
         }
@@ -418,6 +438,11 @@ abstract class AbstractMainFragment : GenericMainFragment() {
                 val action = HistoryListFragmentDirections.actionHistoryListFragmentToConversationsListFragment()
                 navigateTo(action)
             }
+            R.id.voicemailListFragment -> {
+                Log.i("$TAG Leaving voicemail list")
+                val action = VoicemailListFragmentDirections.actionVoicemailListFragmentToConversationsListFragment()
+                navigateTo(action)
+            }
         }
     }
 
@@ -437,6 +462,37 @@ abstract class AbstractMainFragment : GenericMainFragment() {
             R.id.historyListFragment -> {
                 Log.i("$TAG Leaving history list")
                 val action = HistoryListFragmentDirections.actionHistoryListFragmentToMeetingsListFragment()
+                navigateTo(action)
+            }
+            R.id.voicemailListFragment -> {
+                Log.i("$TAG Leaving voicemail list")
+                val action = VoicemailListFragmentDirections.actionVoicemailListFragmentToMeetingsListFragment()
+                navigateTo(action)
+            }
+        }
+    }
+
+    private fun goToVoicemailList() {
+        Log.i("$TAG Navigating to voicemail list")
+        when (currentFragmentId) {
+            R.id.contactsListFragment -> {
+                Log.i("$TAG Leaving contacts list")
+                val action = ContactsListFragmentDirections.actionContactsListFragmentToVoicemailListFragment()
+                navigateTo(action)
+            }
+            R.id.conversationsListFragment -> {
+                Log.i("$TAG Leaving conversations list")
+                val action = ConversationsListFragmentDirections.actionConversationsListFragmentToVoicemailListFragment()
+                navigateTo(action)
+            }
+            R.id.meetingsListFragment -> {
+                Log.i("$TAG Leaving meetings list")
+                val action = MeetingsListFragmentDirections.actionMeetingsListFragmentToVoicemailListFragment()
+                navigateTo(action)
+            }
+            R.id.historyListFragment -> {
+                Log.i("$TAG Leaving history list")
+                val action = HistoryListFragmentDirections.actionHistoryListFragmentToVoicemailListFragment()
                 navigateTo(action)
             }
         }

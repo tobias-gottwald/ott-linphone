@@ -59,6 +59,8 @@ open class AbstractMainViewModel
 
     val conversationsSelected = MutableLiveData<Boolean>()
 
+    val voicemailSelected = MutableLiveData<Boolean>()
+
     val meetingsSelected = MutableLiveData<Boolean>()
 
     val hideConversations = MutableLiveData<Boolean>()
@@ -90,6 +92,10 @@ open class AbstractMainViewModel
     }
 
     val navigateToConversationsEvent: MutableLiveData<Event<Boolean>> by lazy {
+        MutableLiveData()
+    }
+
+    val navigateToVoicemailEvent: MutableLiveData<Event<Boolean>> by lazy {
         MutableLiveData()
     }
 
@@ -273,6 +279,11 @@ open class AbstractMainViewModel
     @UiThread
     fun navigateToConversations() {
         navigateToConversationsEvent.value = Event(true)
+    }
+
+    @UiThread
+    fun navigateToVoicemail() {
+        navigateToVoicemailEvent.value = Event(true)
     }
 
     @UiThread

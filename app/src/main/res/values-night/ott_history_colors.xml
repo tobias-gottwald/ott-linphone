@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- OTT: neutral (non-blue) grey clearly lighter than the dark resting
+         background (#191919) while staying distinguishable from the
+         selected/pressed blue-tinted highlight (gray_main2_800 #22334D). -->
+    <color name="ott_history_unseen_cell_background">#2E2E2E</color>
+</resources>

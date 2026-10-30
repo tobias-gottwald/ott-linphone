@@ -194,7 +194,6 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="10dp"
             android:layout_marginTop="20dp"
-            android:layout_marginBottom="@dimen/screen_bottom_margin"
             android:text="@string/settings_calls_change_ringtone_title"
             android:drawableEnd="@drawable/arrow_square_out"
             android:drawableTint="?attr/color_main2_600"
@@ -203,6 +202,23 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/auto_record_switch"/>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            style="@style/settings_subtitle_style"
+            android:onClick="@{() -> viewModel.changeRingtone()}"
+            android:id="@+id/change_ringtone_subtitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:padding="5dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="@dimen/screen_bottom_margin"
+            android:text="@{viewModel.currentRingtoneLabel}"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintTop_toBottomOf="@id/change_ringtone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
         <androidx.appcompat.widget.AppCompatTextView
             style="@style/settings_title_style"
@@ -231,7 +247,7 @@
             android:layout_marginEnd="16dp"
             android:checked="@{viewModel.callRedirectionService}"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/change_ringtone" />
+            app:layout_constraintTop_toBottomOf="@id/change_ringtone_subtitle" />
 
         <androidx.appcompat.widget.AppCompatTextView
             style="@style/settings_title_style"
