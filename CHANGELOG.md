@@ -24,6 +24,10 @@ Group changes to describe their impact on the project, as follows:
   across devices (same source as the bold name), cleared store-wide once seen
 - Help/About now shows the numeric build code alongside the app version.
 
+### Fixed
+- Correct the ringtone picker constraint and voicemail error-label nullability
+  reported by release lint.
+
 ## [6.2.6] - 2026-08-20
 
 ### Changed

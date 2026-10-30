@@ -80,7 +80,7 @@ class VoicemailDetailViewModel : GenericViewModel() {
     /** Last detail failure, null while loading/success. */
     val detailError = MutableLiveData<OttVoicemailClient.VoicemailError?>()
 
-    val errorLabel = MutableLiveData<String>()
+    val errorLabel = MutableLiveData<String?>()
 
     val detailReady = MutableLiveData<Boolean>()
 

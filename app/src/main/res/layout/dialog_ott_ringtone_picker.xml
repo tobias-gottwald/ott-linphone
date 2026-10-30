@@ -43,7 +43,7 @@
             android:drawableEnd="@drawable/x"
             android:drawableTint="?attr/color_main2_600"
             app:layout_constraintVertical_chainStyle="packed"
-            app:layout_constraintBottom_toTopOf="@id/ringtones_list"
+            app:layout_constraintBottom_toTopOf="@id/ringtones_list_container"
             app:layout_constraintStart_toStartOf="@id/dialog_background"
             app:layout_constraintEnd_toEndOf="@id/dialog_background"
             app:layout_constraintTop_toTopOf="parent" />
