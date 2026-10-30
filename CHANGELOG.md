@@ -22,6 +22,7 @@ Group changes to describe their impact on the project, as follows:
 ### Changed
 - Missed/unseen calls are highlighted with a grey row background shared
   across devices (same source as the bold name), cleared store-wide once seen
+- Help/About now shows the numeric build code alongside the app version.
 
 ## [6.2.6] - 2026-08-20
 

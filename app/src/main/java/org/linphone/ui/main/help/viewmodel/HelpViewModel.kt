@@ -143,7 +143,7 @@ class HelpViewModel
 
     init {
         val currentVersion = BuildConfig.VERSION_NAME
-        version.value = currentVersion
+        version.value = "$currentVersion (${BuildConfig.VERSION_CODE})"
 
         val versionCode = BuildConfig.VERSION_CODE
         val appGitDescribe = AppUtils.getString(R.string.linphone_app_version)
@@ -232,7 +232,7 @@ class HelpViewModel
 
     @UiThread
     fun checkForUpdate() {
-        val currentVersion = version.value.orEmpty()
+        val currentVersion = BuildConfig.VERSION_NAME
         coreContext.postOnCoreThread { core ->
             Log.i("$TAG Checking for update using current version [$currentVersion]")
             core.checkForUpdate(currentVersion)
