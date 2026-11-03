@@ -151,9 +151,6 @@
     <string name="help_about_check_for_update">Comprobar actualización</string>
     <string name="help_about_contribute_translations_subtitle">Ayude a que la aplicación sea accesible para la mayor cantidad de personas posible.</string>
     <string name="help_about_advanced_title">Avanzado</string>
-    <string name="help_version_up_to_date_toast_message">Su versión esta actualizada</string>
-    <string name="help_dialog_update_available_title">Actualización disponible</string>
-    <string name="help_dialog_update_available_message">Hay una nueva versión %s disponible. ¿Quieres actualizarla?</string>
     <string name="help_quit_title">Salir de la aplicación</string>
     <string name="help_troubleshooting_title">Solución de problemas</string>
     <string name="help_troubleshooting_subtitle">Transmita sus registros de diagnóstico para facilitar la resolución de errores.</string>
@@ -164,7 +161,6 @@
     <string name="help_troubleshooting_firebase_project_title">ID del proyecto de Firebase</string>
     <string name="help_troubleshooting_share_logs_dialog_title">Compartir enlaces de registros de depuración usando…</string>
     <string name="help_about_contribute_translations_title">Contribuir a la traducción de &appName;</string>
-    <string name="help_error_checking_version_toast_message">Se produjo un error al buscar actualizaciones</string>
     <string name="help_troubleshooting_print_logs_in_logcat">Imprimir registros en logcat</string>
     <string name="help_troubleshooting_debug_logs_cleaned_toast_message">Se han limpiado los registros de depuración</string>
     <string name="help_troubleshooting_debug_logs_upload_error_toast_message">No se pudieron cargar los registros de depuración</string>

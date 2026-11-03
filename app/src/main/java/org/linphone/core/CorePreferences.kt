@@ -83,13 +83,6 @@ class CorePreferences
         }
 
     @get:AnyThread @set:WorkerThread
-    var checkForUpdateServerUrl: String
-        get() = config.getString("misc", "version_check_url_root", "").orEmpty()
-        set(value) {
-            config.setString("misc", "version_check_url_root", value)
-        }
-
-    @get:AnyThread @set:WorkerThread
     var conditionsAndPrivacyPolicyAccepted: Boolean
         get() = config.getBool("app", "read_and_agree_terms_and_privacy", false)
         set(value) {

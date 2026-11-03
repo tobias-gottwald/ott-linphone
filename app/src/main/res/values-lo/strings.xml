@@ -96,9 +96,6 @@
     <string name="help_about_version_title">ເວີຊັນ</string>
     <string name="help_about_check_for_update">ກວດສອບການອັບເດດ</string>
     <string name="help_about_advanced_title">ຂັ້ນສູງ</string>
-    <string name="help_version_up_to_date_toast_message">ເວີຊັນຂອງເຈົ້າເປັນເວີຊັນຫຼ້າສຸດແລ້ວ</string>
-    <string name="help_error_checking_version_toast_message">ເກີດຂໍ້ຜິດພາດຂະນະກວດສອບການອັບເດດ</string>
-    <string name="help_dialog_update_available_title">ມີການອັບເດດໃໝ່</string>
     <string name="help_quit_title">ອອກຈາກແອັບຯ</string>
     <string name="help_troubleshooting_title">ການແກ້ໄຂບັນຫາ</string>
     <string name="help_troubleshooting_print_logs_in_logcat">ສະແດງລັອກໃນ logcat</string>

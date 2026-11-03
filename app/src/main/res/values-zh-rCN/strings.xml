@@ -161,9 +161,6 @@
     <string name="help_about_version_title">版本</string>
     <string name="help_about_check_for_update">检查新版本更新</string>
     <string name="help_about_advanced_title">高级</string>
-    <string name="help_error_checking_version_toast_message">检查更新时出错</string>
-    <string name="help_dialog_update_available_title">可用更新</string>
-    <string name="help_dialog_update_available_message">新版本%s可用。您想更新吗？</string>
     <string name="help_quit_title">退出程序</string>
     <string name="help_troubleshooting_title">故障排除</string>
     <string name="help_troubleshooting_print_logs_in_logcat">打印日志到logcat</string>
@@ -778,7 +775,6 @@
     <string name="welcome_page_1_message">一款 <b>安全</b>、<b>开源</b> 、<b>法国</b> 通讯应用app。</string>
     <string name="drawer_menu_manage_account">管理个人资料</string>
     <string name="settings_advanced_use_smff_format_for_call_recordings_subtitle">将使用专有文件格式</string>
-    <string name="help_version_up_to_date_toast_message">版本是最新的</string>
     <string name="account_settings_dialog_invalid_password_message">连接失败，因为账户缺少身份验证或身份验证无效。\n%s\n\n您可以再次提供密码，或在设置中检查您的账户配置。</string>
     <string name="settings_security_enable_vfs_subtitle">警告：一旦启用，就不能禁用！</string>
     <string name="settings_contacts_carddav_deleted_toast">CardDAV账户已删除</string>

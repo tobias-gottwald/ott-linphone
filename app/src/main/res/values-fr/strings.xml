@@ -181,10 +181,6 @@
     <string name="help_about_contribute_translations_title">Aider à traduire &appName;</string>
     <string name="help_about_contribute_translations_subtitle">Contribuez à rendre l\'application accessible au plus grand nombre.</string>
     <string name="help_about_advanced_title">Avancé</string>
-    <string name="help_version_up_to_date_toast_message">Votre version est à jour</string>
-    <string name="help_error_checking_version_toast_message">Une erreur est survenue</string>
-    <string name="help_dialog_update_available_title">Mise à jour disponible</string>
-    <string name="help_dialog_update_available_message">Une nouvelle version %s est disponible. Voulez-vous mettre à jour ?</string>
     <string name="help_quit_title">Quitter l\'application</string>
     <string name="help_troubleshooting_title">Dépannage</string>
     <string name="help_troubleshooting_subtitle">Transmettez vos journaux de diagnostic pour faciliter la résolution des bugs.</string>

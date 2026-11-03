@@ -32,7 +32,6 @@ import org.linphone.R
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.Factory
-import org.linphone.core.VersionUpdateCheckResult
 import org.linphone.core.tools.Log
 import org.linphone.ui.GenericViewModel
 import org.linphone.utils.AppUtils
@@ -56,8 +55,6 @@ class HelpViewModel
 
     val firebaseProjectId = MutableLiveData<String>()
 
-    val checkUpdateAvailable = MutableLiveData<Boolean>()
-
     val uploadLogsAvailable = MutableLiveData<Boolean>()
 
     val logsUploadInProgress = MutableLiveData<Boolean>()
@@ -68,15 +65,7 @@ class HelpViewModel
 
     val canConfigFileBeViewed = MutableLiveData<Boolean>()
 
-    val newVersionAvailableEvent: MutableLiveData<Event<Pair<String, String>>> by lazy {
-        MutableLiveData()
-    }
-
-    val versionUpToDateEvent: MutableLiveData<Event<Boolean>> by lazy {
-        MutableLiveData()
-    }
-
-    val errorEvent: MutableLiveData<Event<Boolean>> by lazy {
+    val openPlayStoreEvent: MutableLiveData<Event<Boolean>> by lazy {
         MutableLiveData()
     }
 
@@ -99,31 +88,6 @@ class HelpViewModel
     private var versionClickCount: Int = 0
 
     private val coreListener = object : CoreListenerStub() {
-        @WorkerThread
-        override fun onVersionUpdateCheckResultReceived(
-            core: Core,
-            result: VersionUpdateCheckResult,
-            version: String?,
-            url: String?
-        ) {
-            when (result) {
-                VersionUpdateCheckResult.NewVersionAvailable -> {
-                    Log.i("$TAG Update available, version [$version], url [$url]")
-                    if (!version.isNullOrEmpty() && !url.isNullOrEmpty()) {
-                        newVersionAvailableEvent.postValue(Event(Pair(version, url)))
-                    }
-                }
-                VersionUpdateCheckResult.UpToDate -> {
-                    Log.i("$TAG This version is up-to-date")
-                    versionUpToDateEvent.postValue(Event(true))
-                }
-                else -> {
-                    Log.e("$TAG Can't check for update, an error happened [$result]")
-                    errorEvent.postValue(Event(true))
-                }
-            }
-        }
-
         @WorkerThread
         override fun onLogCollectionUploadStateChanged(
             core: Core,
@@ -172,7 +136,6 @@ class HelpViewModel
 
             printLogsInLogcat.postValue(corePreferences.printLogsInLogcat)
             developerSettingsEnabled.postValue(corePreferences.showDeveloperSettings)
-            checkUpdateAvailable.postValue(corePreferences.checkForUpdateServerUrl.isNotEmpty())
             uploadLogsAvailable.postValue(!core.logCollectionUploadServerUrl.isNullOrEmpty())
         }
     }
@@ -231,12 +194,9 @@ class HelpViewModel
     }
 
     @UiThread
-    fun checkForUpdate() {
-        val currentVersion = BuildConfig.VERSION_NAME
-        coreContext.postOnCoreThread { core ->
-            Log.i("$TAG Checking for update using current version [$currentVersion]")
-            core.checkForUpdate(currentVersion)
-        }
+    fun openAppInPlayStore() {
+        Log.i("$TAG Opening the app's page in the Play Store")
+        openPlayStoreEvent.postValue(Event(true))
     }
 
     @UiThread

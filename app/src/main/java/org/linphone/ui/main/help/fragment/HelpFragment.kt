@@ -30,11 +30,9 @@ import androidx.navigation.fragment.findNavController
 import org.linphone.R
 import org.linphone.core.tools.Log
 import org.linphone.databinding.HelpFragmentBinding
-import org.linphone.ui.GenericActivity
+import org.linphone.BuildConfig
 import org.linphone.ui.main.fragment.GenericMainFragment
 import org.linphone.ui.main.help.viewmodel.HelpViewModel
-import org.linphone.utils.ConfirmationDialogModel
-import org.linphone.utils.DialogUtils
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 
@@ -96,57 +94,23 @@ class HelpFragment : GenericMainFragment() {
             openUrlInBrowser(url)
         }
 
-        viewModel.newVersionAvailableEvent.observe(viewLifecycleOwner) {
-            it.consume { pair ->
-                val version = pair.first
-                val url = pair.second
-                showUpdateAvailableDialog(version, url)
-            }
-        }
-
-        viewModel.versionUpToDateEvent.observe(viewLifecycleOwner) {
+        viewModel.openPlayStoreEvent.observe(viewLifecycleOwner) {
             it.consume {
-                (requireActivity() as GenericActivity).showGreenToast(
-                    getString(R.string.help_version_up_to_date_toast_message),
-                    R.drawable.info
-                )
-            }
-        }
-
-        viewModel.errorEvent.observe(viewLifecycleOwner) {
-            it.consume {
-                (requireActivity() as GenericActivity).showRedToast(
-                    getString(R.string.help_error_checking_version_toast_message),
-                    R.drawable.warning_circle
-                )
+                openAppInPlayStore()
             }
         }
     }
 
-    private fun showUpdateAvailableDialog(version: String, url: String) {
-        val message = getString(R.string.help_dialog_update_available_message, version)
-
-        val model = ConfirmationDialogModel()
-        val dialog = DialogUtils.getUpdateAvailableDialog(
-            requireActivity(),
-            model,
-            message
-        )
-
-        model.dismissEvent.observe(viewLifecycleOwner) {
-            it.consume {
-                dialog.dismiss()
-            }
+    private fun openAppInPlayStore() {
+        val appId = BuildConfig.APPLICATION_ID
+        Log.i("$TAG Trying to open the app's page [$appId] in the Play Store")
+        try {
+            val marketIntent = Intent(Intent.ACTION_VIEW, "market://details?id=$appId".toUri())
+            startActivity(marketIntent)
+        } catch (anfe: ActivityNotFoundException) {
+            Log.w("$TAG Play Store app not found, falling back to web URL [$anfe]")
+            openUrlInBrowser("https://play.google.com/store/apps/details?id=$appId")
         }
-
-        model.confirmEvent.observe(viewLifecycleOwner) {
-            it.consume {
-                openUrlInBrowser(url)
-                dialog.dismiss()
-            }
-        }
-
-        dialog.show()
     }
 
     private fun openUrlInBrowser(url: String) {

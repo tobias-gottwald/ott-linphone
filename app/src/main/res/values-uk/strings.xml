@@ -137,9 +137,6 @@
     <string name="help_about_version_title">Версія</string>
     <string name="help_about_check_for_update">Перевірити оновлення</string>
     <string name="help_about_advanced_title">Розширений</string>
-    <string name="help_version_up_to_date_toast_message">Ваша версія актуальна</string>
-    <string name="help_dialog_update_available_title">Доступне оновлення</string>
-    <string name="help_dialog_update_available_message">Доступна нова версія %s. Бажаєте оновити?</string>
     <string name="help_quit_title">Закрити застосунок</string>
     <string name="help_troubleshooting_title">Усунення несправностей</string>
     <string name="help_troubleshooting_print_logs_in_logcat">Друкувати логи в logcat</string>
@@ -156,7 +153,6 @@
     <string name="drawer_menu_no_account_configured_yet">Обліковий запис ще не налаштовано</string>
     <string name="help_about_privacy_policy_subtitle">Яку інформацію збирає та використовує &appName;</string>
     <string name="help_about_contribute_translations_title">Зробіть свій внесок у переклад &appName;</string>
-    <string name="help_error_checking_version_toast_message">Під час перевірки оновлень сталася помилка</string>
     <string name="settings_calls_change_ringtone_pick_title">Обрати мелодію дзвінка</string>
     <string name="settings_conversations_auto_export_media_to_native_gallery_title">Зробити завантажені медіафайли загальнодоступними</string>
     <string name="settings_contacts_edit_carddav_server_title">Редагувати адресну книгу CardDAV</string>

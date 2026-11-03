@@ -249,10 +249,6 @@
     <string name="help_about_privacy_policy_subtitle">Jaké informace &appName; sbírá a používá</string>
     <string name="bottom_navigation_conversations_label">Konverzace</string>
     <string name="help_about_advanced_title">Pokročilé</string>
-    <string name="help_version_up_to_date_toast_message">Vaše verze je aktuální</string>
-    <string name="help_error_checking_version_toast_message">Během kontroly aktualizací nastala chyba</string>
-    <string name="help_dialog_update_available_title">Je dostupná nová aktualizace</string>
-    <string name="help_dialog_update_available_message">Nová verze %s je dostupná. Přejete si aktualizovat?</string>
     <string name="help_quit_title">Ukončit aplikaci</string>
     <string name="help_troubleshooting_title">Řešení potíží</string>
     <string name="help_troubleshooting_app_version_title">Verze aplikace</string>

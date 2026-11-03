@@ -23,6 +23,9 @@ Group changes to describe their impact on the project, as follows:
 - Missed/unseen calls are highlighted with a grey row background shared
   across devices (same source as the bold name), cleared store-wide once seen
 - Help/About now shows the numeric build code alongside the app version.
+- The "Check update" button in Help/About now opens the app's Play Store
+  listing (internal test track) instead of querying linphone.org release
+  servers, which always reported the app as up-to-date.
 
 ### Fixed
 - Correct the ringtone picker constraint and voicemail error-label nullability

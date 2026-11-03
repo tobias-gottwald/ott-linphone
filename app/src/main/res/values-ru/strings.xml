@@ -272,9 +272,6 @@
     <string name="help_about_version_title">Версия</string>
     <string name="help_about_check_for_update">Проверить обновления</string>
     <string name="help_about_advanced_title">Расширенный</string>
-    <string name="help_error_checking_version_toast_message">Произошла ошибка при проверке обновлений</string>
-    <string name="help_version_up_to_date_toast_message">Ваша версия самая последняя</string>
-    <string name="help_dialog_update_available_title">Доступно обновление</string>
     <string name="help_quit_title">Выйти из приложения</string>
     <string name="help_troubleshooting_share_logs">Поделиться логами</string>
     <string name="help_troubleshooting_share_logs_dialog_title">Поделитесь ссылкой на журналы отладки с помощью…</string>
@@ -825,7 +822,6 @@
     <string name="content_description_not_trusted_contact_icon">Ненадёжный контакт!</string>
     <string name="assistant_permissions_subtitle">Чтобы в полной мере насладиться &appName; нам нужно, чтобы вы предоставили следующие разрешения:</string>
     <string name="help_title">Помощь</string>
-    <string name="help_dialog_update_available_message">Доступна новая версия %s. Хотите обновить?</string>
     <string name="help_troubleshooting_app_version_title">Версия приложения</string>
     <string name="help_troubleshooting_sdk_version_title">Версия SDK</string>
     <string name="help_troubleshooting_firebase_project_title">ID проекта Firebase</string>

@@ -33,7 +33,6 @@
     <string name="assistant_dialog_phone_number_validation_not_available_register_button_label">Registrati con un\'email</string>
     <string name="assistant_permissions_post_notifications_title"><b>Invio notifiche:</b> per avvisarti quando arriva un messaggio o una chiamata.</string>
     <string name="assistant_permissions_access_local_network_title"><b>Accesso alla rete locale (facoltativo):</b> necessario da Android 17 per potersi collegare a un server sulla rete locale.</string>
-    <string name="help_error_checking_version_toast_message">Si è verificato un errore durante la ricerca di aggiornamenti</string>
     <string name="help_quit_title">Chiudi l\'app</string>
     <string name="help_troubleshooting_subtitle">Invia i log diagnostici per agevolare la risoluzione dei problemi.</string>
     <string name="help_troubleshooting_print_logs_in_logcat">Scrivi i log in logcat</string>
@@ -469,8 +468,6 @@
     <string name="assistant_recover_email_account_label">Un\'email</string>
     <string name="assistant_recover_phone_number_account_label">Un numero di telefono</string>
     <string name="drawer_menu_add_account">Aggiungi un account</string>
-    <string name="help_dialog_update_available_title">Aggiornamento disponibile</string>
-    <string name="help_dialog_update_available_message">È disponibile la nuova versione %s. Vuoi aggiornare?</string>
     <string name="help_troubleshooting_title">Risoluzione dei problemi</string>
     <string name="settings_contacts_carddav_use_as_default_title">Salva qui i nuovi contatti</string>
     <string name="settings_contacts_ldap_server_url_title">URL del server (obbligatorio)</string>
@@ -845,7 +842,6 @@
     <string name="help_about_check_for_update">Cerca aggiornamenti</string>
     <string name="help_about_contribute_translations_subtitle">Aiutaci a rendere l\'app accessibile al maggior numero di persone.</string>
     <string name="help_about_advanced_title">Avanzate</string>
-    <string name="help_version_up_to_date_toast_message">La versione è aggiornata</string>
     <string name="settings_user_interface_light_theme_label">Tema chiaro</string>
     <string name="settings_advanced_ring_during_early_media_title">Squilla durante l\'early media di una chiamata in entrata</string>
     <string name="settings_advanced_allow_outgoing_early_media_title">Consenti l\'early media in uscita</string>

@@ -62,7 +62,6 @@
     <string name="assistant_permissions_read_contacts_title"><b>Ler contatos:</b> Para exibir seus contatos e encontrar quem está usando o &appName;.</string>
     <string name="assistant_recover_phone_number_account_unavailable_no_push_warning">As notificações push não parecem estar disponíveis no seu dispositivo, mas são obrigatórias para recuperar uma conta de número de telefone no aplicativo móvel.</string>
     <string name="help_about_privacy_policy_subtitle">Quais informações o &appName; coleta e usa</string>
-    <string name="help_error_checking_version_toast_message">Ocorreu um erro ao verificar por atualizações</string>
     <string name="settings_security_enable_vfs_failure_toast">Falha ao ativar o módulo de criptografia!</string>
     <string name="settings_security_enable_vfs_dialog_confirmation_message">Uma vez ativado, você terá que reiniciar o aplicativo.\nDepois disso, todos os dados do aplicativo serão criptografados e acessíveis apenas através do aplicativo.\n\nTenha cuidado, isso não pode ser desfeito!</string>
     <string name="settings_meetings_layout_mosaic_label">Mosaico</string>
@@ -193,9 +192,6 @@
     <string name="help_about_contribute_translations_title">Contribua na tradução do &appName;</string>
     <string name="help_about_contribute_translations_subtitle">Ajude a tornar o aplicativo acessível ao maior número de pessoas possível.</string>
     <string name="help_about_advanced_title">Avançado</string>
-    <string name="help_version_up_to_date_toast_message">Sua versão está atualizada</string>
-    <string name="help_dialog_update_available_title">Atualização disponível</string>
-    <string name="help_dialog_update_available_message">Uma nova versão %s está disponível. Você quer atualizar?</string>
     <string name="help_quit_title">Sair do aplicativo</string>
     <string name="help_troubleshooting_title">Solução de problemas</string>
     <string name="help_troubleshooting_print_logs_in_logcat">Imprimir logs no logcat</string>

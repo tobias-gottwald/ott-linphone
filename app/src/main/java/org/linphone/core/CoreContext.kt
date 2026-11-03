@@ -1376,10 +1376,6 @@ class CoreContext
         Log.i("$TAG Enabling hiding empty chat rooms")
         core.config.setBool("misc", "hide_empty_chat_rooms", true)
 
-        // Replace old URLs by new ones
-        if (corePreferences.checkForUpdateServerUrl == "https://www.linphone.org/releases") {
-            corePreferences.checkForUpdateServerUrl = "https://download.linphone.org/releases"
-        }
         if (core.fileTransferServer == "https://www.linphone.org:444/lft.php") {
             core.fileTransferServer = "https://files.linphone.org/http-file-transfer-server/hft.php"
         }

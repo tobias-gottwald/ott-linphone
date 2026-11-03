@@ -233,10 +233,6 @@
     <string name="help_about_contribute_translations_title">Contribute on &appName; translation</string>
     <string name="help_about_contribute_translations_subtitle">Help make the app accessible to as many people as possible.</string>
     <string name="help_about_advanced_title">Advanced</string>
-    <string name="help_version_up_to_date_toast_message">Your version is up-to-date</string>
-    <string name="help_error_checking_version_toast_message">An error occurred while checking for update</string>
-    <string name="help_dialog_update_available_title">Update available</string>
-    <string name="help_dialog_update_available_message">A new version %s is available. Do you want to update?</string>
     <string name="help_quit_title">Quit app</string>
     <string name="help_troubleshooting_title">Troubleshooting</string>
     <string name="help_troubleshooting_subtitle">Transmit your diagnostic logs to facilitate bug resolution.</string>

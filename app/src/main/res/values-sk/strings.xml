@@ -147,9 +147,6 @@
     <string name="help_about_version_title">Verzia</string>
     <string name="help_about_contribute_translations_subtitle">Pomôžte sprístupniť aplikáciu čo najväčšiemu počtu ľudí.</string>
     <string name="help_about_advanced_title">Pokročilé</string>
-    <string name="help_version_up_to_date_toast_message">Vaša verzia je aktuálna</string>
-    <string name="help_dialog_update_available_title">Je dostupná nová aktualizácia</string>
-    <string name="help_dialog_update_available_message">Nová verzia %s je dostupná. Chcete ju aktualizovať?</string>
     <string name="help_quit_title">Ukončiť aplikáciu</string>
     <string name="help_troubleshooting_title">Riešenie problémov</string>
     <string name="help_troubleshooting_subtitle">Odošlite svoje diagnostické záznamy, aby ste uľahčili riešenie chýb.</string>
@@ -326,7 +323,6 @@
     <string name="drawer_menu_no_account_configured_yet">Žiadny účet zatiaľ nie je nastavený</string>
     <string name="manage_account_status_connected_summary">Tento účet je aktívny, každý Vám môže volať.</string>
     <string name="manage_account_e2e_encrypted_mode_default_summary">Tento režim zaručuje dôvernosť Vašich údajov. Naša technológia koncového šifrovania poskytuje najvyššiu úroveň bezpečnosti pre Vaše komunikácie.</string>
-    <string name="help_error_checking_version_toast_message">Počas kontroly aktualizácie nastala chyba</string>
     <string name="settings_contacts_carddav_realm_title">Autentifikačná doména</string>
     <string name="manage_account_title">Spravovať účet</string>
     <string name="help_about_privacy_policy_subtitle">Aké informácie &appName; zbiera a používa</string>
